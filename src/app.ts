@@ -1,6 +1,8 @@
 import express, { Application } from "express";
+require("dotenv").config();
 import cors from "cors";
-// import studyRoutes from './api/routes/study.routes';
+import authRoutes from "./routes/auth.routes";
+const port = process.env.PORT || 3000;
 
 const app: Application = express();
 
@@ -9,13 +11,12 @@ app.use(cors());
 app.use(express.json());
 
 // Rutas
-// app.use('/api/v1/study', studyRoutes);
+app.use("/v1/auth", authRoutes);
 
-// Manejador de errores global
-app.use((err: any, req: any, res: any, next: any) => {
-  res.status(err.status || 500).json({
-    error: err.message || "Internal Server Error",
-  });
+app.get("/", (req, res) => {
+  res.send("Welcome to ReadFlow Backend");
 });
 
-export default app;
+app.listen(port, () => {
+  console.log(`App listening at http://localhost:${port}`);
+});
