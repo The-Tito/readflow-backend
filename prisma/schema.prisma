@@ -1,26 +1,166 @@
+// Configuración del Generador y Fuente de Datos
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL") 
+  url      = env("DATABASE_URL")
 }
 
-model users {
-  id       Int    @id @default(autoincrement())
-  username String
-  email    String @unique
-  password String
-  user_streaks user_streaks?
+// Modelos
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique @db.VarChar(50)
+  email     String   @unique @db.VarChar(255)
+  password  String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relaciones
+  streak     UserStreak?
+  documents  Document[]
+  sessions   StudySession[]
+  attempts   Attempt[]
+  reminders  ScheduledReminder[]
 
   @@map("users")
 }
 
-model user_streaks {
-  id            Int  @id @default(autoincrement())
-  user_id       Int  @unique
-  current_streak Int
+model Document {
+  id               Int      @id @default(autoincrement())
+  userId           Int      @map("user_id")
+  documentHash     String   @map("document_hash") @db.VarChar(64)
+  originalFilename String   @map("original_filename") @db.VarChar(255)
+  uploadedAt       DateTime @default(now()) @map("uploaded_at") @db.Timestamptz
 
-  user users @relation(fields: [user_id], references: [id])
+  // Relaciones
+  user     User           @relation(fields: [userId], references: [id])
+  sessions StudySession[]
+
+  // Índices y Restricciones
+  @@unique([userId, documentHash], name: "unique_user_document")
+  @@index([userId])
+  @@index([documentHash])
+  @@map("documents")
+}
+
+model DifficultyLevel {
+  id             Int     @id @default(autoincrement())
+  slug           String  @unique @db.VarChar(50)
+  displayName    String  @map("display_name") @db.VarChar(100)
+  description    String? @db.Text // Puede ser opcional
+  promptModifier String? @map("prompt_modifier") @db.Text
+
+  sessions StudySession[]
+
+  @@map("difficulty_levels")
+}
+
+model EvaluationType {
+  id               Int    @id @default(autoincrement())
+  slug             String @unique @db.VarChar(50)
+  displayName      String @map("display_name") @db.VarChar(100)
+  validationSchema Json?  @map("validation_schema") @db.JsonB
+  scoringConfig    Json?  @map("scoring_config") @db.JsonB
+
+  sessions StudySession[]
+
+  @@map("evaluation_types")
+}
+
+model StudySession {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @map("user_id")
+  documentId        Int      @map("document_id")
+  difficultyLevelId Int      @map("difficulty_level_id")
+  evaluationTypeId  Int      @map("evaluation_type_id")
+  title             String   @db.VarChar(255)
+  summaryBody       String   @map("summary_body") @db.Text
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relaciones
+  user            User            @relation(fields: [userId], references: [id])
+  document        Document        @relation(fields: [documentId], references: [id])
+  difficultyLevel DifficultyLevel @relation(fields: [difficultyLevelId], references: [id])
+  evaluationType  EvaluationType  @relation(fields: [evaluationTypeId], references: [id])
+  
+  quizData        QuizData?       
+  attempts        Attempt[]
+  reminders       ScheduledReminder[]
+
+  @@index([userId])
+  @@index([documentId])
+  @@map("study_sessions")
+}
+
+model QuizData {
+  id             Int       @id @default(autoincrement())
+  studySessionId Int       @unique @map("study_session_id")
+  quizDataT0     Json      @map("quiz_data_t0") @db.JsonB
+  quizDataT48    Json?     @map("quiz_data_t48") @db.JsonB // Opcional al inicio
+  isFrozen       Boolean   @default(false) @map("is_frozen")
+  t0CompletedAt  DateTime? @map("t0_completed_at") @db.Timestamptz
+  t48GeneratedAt DateTime? @map("t48_generated_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  studySession StudySession @relation(fields: [studySessionId], references: [id])
+
+  @@map("quizz_data")
+}
+
+model Attempt {
+  id                 Int       @id @default(autoincrement())
+  userId             Int       @map("user_id")
+  studySessionId     Int       @map("study_session_id")
+  timingTag          String    @map("timing_tag") @db.VarChar(10) // "T0" o "T48"
+  userAnswers        Json      @map("user_answers") @db.JsonB
+  score              Float
+  maxPossibleScore   Float     @default(10.0) @map("max_possible_score")
+  aiFeedback         Json?     @map("ai_feedback") @db.JsonB
+  iriValue           Float?    @map("iri_value") // Solo existe en T48
+  startedAt          DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  completedAt        DateTime? @map("completed_at") @db.Timestamptz
+  gradingCompletedAt DateTime? @map("grading_completed_at") @db.Timestamptz
+
+  user         User         @relation(fields: [userId], references: [id])
+  studySession StudySession @relation(fields: [studySessionId], references: [id])
+
+  // Un intento es único por sesión Y etiqueta de tiempo (solo un T0 por sesión)
+  @@unique([studySessionId, timingTag], name: "unique_attempt_per_timing")
+  @@index([userId])
+  @@index([studySessionId])
+  @@map("attempts")
+}
+
+model ScheduledReminder {
+  id                  Int       @id @default(autoincrement())
+  userId              Int       @map("user_id")
+  studySessionId      Int       @map("study_session_id")
+  timingTag           String    @default("T48") @map("timing_tag") @db.VarChar(10)
+  scheduledFor        DateTime  @map("scheduled_for") @db.Timestamptz
+  status              String    @default("pending") @db.VarChar(20)
+  sentAt              DateTime? @map("sent_at") @db.Timestamptz
+  errorMessage        String?   @map("error_message") @db.Text
+  notificationPayload Json?     @map("notification_payload") @db.JsonB
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user         User         @relation(fields: [userId], references: [id])
+  studySession StudySession @relation(fields: [studySessionId], references: [id])
+
+  @@map("scheduled_reminders")
+}
+
+model UserStreak {
+  id               Int       @id @default(autoincrement())
+  userId           Int       @unique @map("user_id") 
+  currentStreak    Int       @default(0) @map("current_streak")
+  bestStreak       Int       @default(0) @map("best_streak")
+  lastActivityDate DateTime? @map("last_activity_date") @db.Timestamptz
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("user_streaks")
 }
