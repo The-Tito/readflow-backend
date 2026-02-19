@@ -5,7 +5,7 @@ import { JWT_EXPIRES_IN, JWT_SECRET } from "../../config/jwt";
 
 export class AuthService {
   static async signUp(username: string, email: string, password: string) {
-    const existingUser = await prisma.users.findUnique({
+    const existingUser = await prisma.user.findUnique({
       where: { email: email },
     });
     if (existingUser) {
@@ -14,7 +14,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await prisma.users.create({
+    const newUser = await prisma.user.create({
       data: {
         username: username,
         email: email,
@@ -33,7 +33,7 @@ export class AuthService {
   }
 
   static async signIn(email: string, password: string) {
-    const user = await prisma.users.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email: email },
     });
     if (!user) {

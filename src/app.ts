@@ -2,6 +2,7 @@ import express, { Application } from "express";
 require("dotenv").config();
 import cors from "cors";
 import authRoutes from "./routes/auth.routes";
+import studySessionRoutes from "./routes/studySession.routes";
 const port = process.env.PORT || 3000;
 
 const app: Application = express();
@@ -12,6 +13,7 @@ app.use(express.json());
 
 // Rutas
 app.use("/v1/auth", authRoutes);
+app.use("/api/v1", studySessionRoutes);
 
 app.get("/", (req, res) => {
   res.send("Welcome to ReadFlow Backend");

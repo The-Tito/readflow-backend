@@ -12,7 +12,7 @@ datasource db {
 
 model User {
   id        Int      @id @default(autoincrement())
-  username  String   @unique @db.VarChar(50)
+  username  String   @db.VarChar(50)
   email     String   @unique @db.VarChar(255)
   password  String   @db.VarChar(255)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
