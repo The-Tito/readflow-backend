@@ -51,8 +51,6 @@ model DifficultyLevel {
   slug           String  @unique @db.VarChar(50)
   displayName    String  @map("display_name") @db.VarChar(100)
   description    String? @db.Text // Puede ser opcional
-  promptModifier String? @map("prompt_modifier") @db.Text
-
   sessions StudySession[]
 
   @@map("difficulty_levels")
