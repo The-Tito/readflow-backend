@@ -185,15 +185,14 @@ export function calculateEssayScore(
   const totalConcepts = requiredConcepts.length;
   const foundCount = aiResult.concepts_found.length;
 
-  // Fórmula: proporción de conceptos encontrados * 10, redondeado a 1 decimal
-  const score = parseFloat(((foundCount / totalConcepts) * 10).toFixed(1));
+  const score = parseFloat(((foundCount / totalConcepts) * 100).toFixed(1));
   const passingScore = parseFloat(
-    ((minimumConceptsToPass / totalConcepts) * 10).toFixed(1),
+    ((minimumConceptsToPass / totalConcepts) * 100).toFixed(1),
   );
 
   return {
     score,
-    maxPossibleScore: 10.0,
+    maxPossibleScore: 100.0,
     passed: score >= passingScore,
     aiFeedback: aiResult,
   };
