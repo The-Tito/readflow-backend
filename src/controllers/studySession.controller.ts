@@ -1,13 +1,12 @@
 import { Request, Response } from "express";
-import { AIService } from "../services/AI.service";
 import fs from "fs";
 import { StudySessionService } from "../services/StudySessionService";
-import { error } from "console";
+import { AuthRequest } from "../middlewares/auth.middleware";
 
 const studySessionService = new StudySessionService();
 
 export class StudySession {
-  static async createStudySession(req: Request, res: Response) {
+  static async createStudySession(req: AuthRequest, res: Response) {
     try {
       if (!req.file) {
         res.status(400).json({ message: "No se subió ningún archivo" });
@@ -16,7 +15,7 @@ export class StudySession {
 
       const summaryDifficultyId = parseInt(req.body.summaryDifficultyId, 10);
       const typeEvaluationId = parseInt(req.body.typeEvaluationId, 10);
-      const userId = req.body.user?.id || 1;
+      const userId = req.user!.id;
 
       const result = await studySessionService.CreateStudySession({
         file: req.file,
@@ -27,12 +26,9 @@ export class StudySession {
 
       res.status(201).json({
         message: "Documento procesado con éxito",
-        file_info: {
-          originalName: req.file.originalname,
-        },
         document: result.document,
         studySession: result.studySession,
-        // study_content: result.aiData // Descomentar cuando la IA esté activa
+        keyConcepts: result.keyConcepts,
       });
     } catch (error: any) {
       console.error("Error en createStudySession:", error);
@@ -44,15 +40,36 @@ export class StudySession {
         );
       }
 
-      if (error.message === "PARAMETROS_INVALIDOS") {
-        res.status(400).json({
-          message: "Faltan parámetros requeridos",
-        });
-        return;
+      switch (error.message) {
+        case "PARAMETROS_INVALIDOS":
+          res.status(400).json({ message: "Faltan parámetros requeridos." });
+          break;
+
+        case "CATALOGO_NO_ENCONTRADO":
+          res.status(404).json({
+            message: "El nivel de dificultad o tipo de evaluación no existe.",
+          });
+          break;
+
+        case "AI_GENERATION_FAILED":
+          res.status(502).json({
+            message: "Error al generar el contenido con IA. Intenta de nuevo.",
+          });
+          break;
+
+        case "SESSION_CREATION_FAILED":
+        case "QUIZ_DATA_CREATION_FAILED":
+          res.status(500).json({
+            message: "Error al guardar la sesión de estudio. Intenta de nuevo.",
+          });
+          break;
+
+        default:
+          res.status(500).json({
+            message: "Error interno del servidor.",
+            error: error.message,
+          });
       }
-      res
-        .status(500)
-        .json({ message: "Error interno del servidor", error: error.message });
     }
   }
 }

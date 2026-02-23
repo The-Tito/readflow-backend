@@ -1,6 +1,11 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import fs from "fs";
-import { MIMEType } from "util";
+import {
+  AIPromptBuilder,
+  calculateEssayScore,
+  EssayEvaluationResult,
+  EssayScore,
+} from "../utils/promptBuilder";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -18,35 +23,16 @@ export class AIService {
 
   async generateStudyMaterial(
     filePath: string,
-    summaryDifficulty: string,
-    typeEvaluation: string,
+    summaryDifficultyName: string,
+    evaluationTypeId: number,
   ) {
     const fileBuffer = fs.readFileSync(filePath);
     const base64Data = fileBuffer.toString("base64");
 
-    console.log(base64Data.toString());
-
-    const prompt = `
-      Actúa como un profesor experto. Analiza el siguiente documento académico.
-      
-      Nivel de dificultad deseado: ${summaryDifficulty}.
-      
-      Tu tarea es generar un JSON estricto con la siguiente estructura:
-      {
-        "title": "Un título corto y relevante para el documento",
-        "summary": "Un resumen técnico y estructurado del contenido principal (máx 300 palabras)",
-        "key_concepts": ["Concepto 1", "Concepto 2", "Concepto 3"],
-        "questions": [
-          {
-            "question": "¿Pregunta 1?",
-            "options": ["Opción A", "Opción B", "Opción C", "Opción D"],
-            "correct_answer": 0,
-            "explanation": "Breve explicación de por qué es la correcta"
-          },
-          ... (Genera 5 preguntas de prueba)
-        ]
-      }
-    `;
+    const prompt = AIPromptBuilder.buildStudyPrompt(
+      summaryDifficultyName,
+      evaluationTypeId,
+    );
 
     const result = await this.model.generateContent([
       { text: prompt },
@@ -61,5 +47,29 @@ export class AIService {
     const responseText = result.response.text();
 
     return JSON.parse(responseText);
+  }
+
+  async evaluateUserEssay(
+    userEssay: string,
+    requiredConcepts: string[],
+    keyRelationships: string[],
+    minimumConceptsToPass: number,
+  ): Promise<EssayScore> {
+    const prompt = AIPromptBuilder.buildEssayEvaluationPrompt(
+      userEssay,
+      requiredConcepts,
+      keyRelationships,
+    );
+
+    const result = await this.model.generateContent(prompt);
+    const responseText = result.response.text();
+    const aiResult: EssayEvaluationResult = JSON.parse(responseText);
+
+    // El score lo calcula el backend con fórmula fija
+    return calculateEssayScore(
+      aiResult,
+      requiredConcepts,
+      minimumConceptsToPass,
+    );
   }
 }

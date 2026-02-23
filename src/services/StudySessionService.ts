@@ -4,6 +4,7 @@ import { DocumentService } from "./document.service";
 import fs from "fs";
 import { PrismaClient } from "@prisma/client";
 import { StudySession } from "../controllers/studySession.controller";
+import { title } from "process";
 
 const aiService = new AIService();
 const documentService = new DocumentService();
@@ -42,31 +43,77 @@ export class StudySessionService {
       originalFilename: file.originalname,
     });
 
-    //   const aiData = await aiService.generateStudyMaterial(
-    //     path,
-    //     summaryDifficulty,
-    //     typeEvaluation,
-    //   );
+    let aiData: any;
 
-    const newStudySession = await prisma.studySession.create({
-      data: {
-        userId: userId,
-        documentId: newDocument.id,
-        difficultyLevelId: summaryDifficultyId,
-        evaluationTypeId: typeEvaluationId,
-        title: "",
-        summaryBody: "",
-      },
-    });
+    try {
+      aiData = await aiService.generateStudyMaterial(
+        file.path,
+        diffExists.displayName,
+        typeEvaluationId,
+      );
+    } catch (error) {
+      await prisma.document.delete({ where: { id: newDocument.id } });
+      fs.unlinkSync(file.path);
+      throw new Error("AI_GENERATION_FAILED");
+    }
 
-    console.log("Documento guardado limpiamente con ID:", newDocument.id);
+    let newStudySession: any;
+    try {
+      newStudySession = await prisma.studySession.create({
+        data: {
+          userId,
+          documentId: newDocument.id,
+          difficultyLevelId: summaryDifficultyId,
+          evaluationTypeId: typeEvaluationId,
+          title: aiData.title ?? "",
+          summaryBody: aiData.summary ?? "",
+        },
+      });
+    } catch (error) {
+      await prisma.document.delete({ where: { id: newDocument.id } });
+      fs.unlinkSync(file.path);
+      throw new Error("SESSION_CREATION_FAILED");
+    }
+
+    try {
+      const isEssayType = typeEvaluationId === 3;
+
+      await prisma.quizData.create({
+        data: {
+          studySessionId: newStudySession.id,
+
+          quizDataT0: isEssayType
+            ? { evaluation_criteria: aiData.evaluation_criteria }
+            : { questions: aiData.t0?.questions ?? [] },
+
+          quizDataT48: isEssayType
+            ? { evaluation_criteria: aiData.evaluation_criteria }
+            : { questions: aiData.t48?.questions ?? [] },
+        },
+      });
+    } catch (error) {
+      await prisma.studySession.delete({ where: { id: newStudySession.id } });
+      await prisma.document.delete({ where: { id: newDocument.id } });
+      fs.unlinkSync(file.path);
+      throw new Error("QUIZ_DATA_CREATION_FAILED");
+    }
 
     fs.unlinkSync(file.path);
 
+    console.log(
+      `StudySession creada [ID: ${newStudySession.id}] para User [ID: ${userId}]`,
+    );
     return {
       document: newDocument,
-      studySession: newStudySession,
-      //aiData
+      studySession: {
+        id: newStudySession.id,
+        title: newStudySession.title,
+        summaryBody: newStudySession.summaryBody,
+        difficultyLevelId: newStudySession.difficultyLevelId,
+        evaluationTypeId: newStudySession.evaluationTypeId,
+        createdAt: newStudySession.createdAt,
+      },
+      keyConcepts: aiData.key_concepts ?? [],
     };
   }
 }
