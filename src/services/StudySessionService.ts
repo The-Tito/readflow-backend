@@ -5,6 +5,7 @@ import fs from "fs";
 import { PrismaClient } from "@prisma/client";
 import { StudySession } from "../controllers/studySession.controller";
 import { title } from "process";
+import { error } from "console";
 
 const aiService = new AIService();
 const documentService = new DocumentService();
@@ -114,6 +115,58 @@ export class StudySessionService {
         createdAt: newStudySession.createdAt,
       },
       keyConcepts: aiData.key_concepts ?? [],
+    };
+  }
+
+  async getStudySessionQuiz(studySessionId: number, userId: number) {
+    const session = await prisma.studySession.findUnique({
+      where: { id: studySessionId },
+      include: {
+        quizData: true,
+        difficultyLevel: true,
+        evaluationType: true,
+      },
+    });
+
+    if (!session) {
+      throw new Error("SESION_NO_ENCONTRADA");
+    }
+
+    if (session.userId !== userId) {
+      throw new Error("ACCESO_DENEGADO");
+    }
+
+    if (!session.quizData) {
+      throw new Error("QUIZ_NO_DISPONIBLE");
+    }
+
+    const completedT0Attempt = await prisma.attempt.findFirst({
+      where: {
+        studySessionId,
+        timingTag: "T0",
+        completedAt: { not: null },
+      },
+    });
+
+    const timingTag = completedT0Attempt ? "48" : "T0";
+    const quizData =
+      timingTag === "T0"
+        ? session.quizData.quizDataT0
+        : session.quizData.quizDataT48;
+
+    return {
+      studySession: {
+        id: session.id,
+        title: session.title,
+        summaryBody: session.summaryBody,
+        difficultyLevel: session.difficultyLevel.displayName,
+        evaluationType: session.evaluationType.displayName,
+        createdAt: session.createdAt,
+      },
+      quizData: {
+        timingTag,
+        data: quizData,
+      },
     };
   }
 }

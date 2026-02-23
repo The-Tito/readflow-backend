@@ -12,4 +12,10 @@ router.post(
   StudySession.createStudySession,
 );
 
+router.get(
+  "/study-session/:id/quiz",
+  AuthMiddleware,
+  StudySession.getStudySessionQuiz,
+);
+
 export default router;
