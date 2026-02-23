@@ -38,7 +38,7 @@ async function main() {
         id: diff.id,
         slug: diff.slug,
         displayName: diff.displayName,
-        description: diff.displayName,
+        description: diff.description,
       },
     });
   }
