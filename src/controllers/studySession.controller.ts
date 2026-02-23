@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AIService } from "../services/AI.service";
 import fs from "fs";
 import { StudySessionService } from "../services/StudySessionService";
+import { error } from "console";
 
 const studySessionService = new StudySessionService();
 
@@ -13,13 +14,14 @@ export class StudySession {
         return;
       }
 
-      const { summaryDifficulty, typeEvaluation } = req.body;
+      const summaryDifficultyId = parseInt(req.body.summaryDifficultyId, 10);
+      const typeEvaluationId = parseInt(req.body.typeEvaluationId, 10);
       const userId = req.body.user?.id || 1;
 
       const result = await studySessionService.CreateStudySession({
         file: req.file,
-        summaryDifficulty,
-        typeEvaluation,
+        summaryDifficultyId,
+        typeEvaluationId,
         userId: userId,
       });
 
@@ -29,13 +31,23 @@ export class StudySession {
           originalName: req.file.originalname,
         },
         document: result.document,
+        studySession: result.studySession,
         // study_content: result.aiData // Descomentar cuando la IA esté activa
       });
     } catch (error: any) {
       console.error("Error en createStudySession:", error);
 
+      if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+        console.log(
+          "Archivo temporal eliminado debido a un error en el proceso.",
+        );
+      }
+
       if (error.message === "PARAMETROS_INVALIDOS") {
-        res.status(400).json({ message: "Faltan parámetros requeridos" });
+        res.status(400).json({
+          message: "Faltan parámetros requeridos",
+        });
         return;
       }
       res
