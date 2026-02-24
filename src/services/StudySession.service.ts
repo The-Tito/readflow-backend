@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AIService } from "./AI.service";
-import { DocumentService } from "./document.service";
+import { DocumentService } from "./Document.service";
 import fs from "fs";
 import { PrismaClient } from "@prisma/client";
 import { StudySession } from "../controllers/studySession.controller";

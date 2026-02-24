@@ -4,6 +4,8 @@ export declare class AuthService {
             id: number;
             email: string;
             username: string;
+            createdAt: Date;
+            updatedAt: Date;
         };
         token: string;
     }>;
@@ -12,6 +14,8 @@ export declare class AuthService {
             id: number;
             email: string;
             username: string;
+            createdAt: Date;
+            updatedAt: Date;
         };
         token: string;
     }>;
