@@ -1,6 +1,11 @@
 import express, { Application } from "express";
+require("dotenv").config();
 import cors from "cors";
-// import studyRoutes from './api/routes/study.routes';
+import authRoutes from "./routes/auth.routes";
+import studySessionRoutes from "./routes/studySession.routes";
+import catalogRoutes from "./routes/catalogs.routes";
+import statsRoutes from "./routes/stats.routes";
+const port = process.env.PORT || 3000;
 
 const app: Application = express();
 
@@ -8,10 +13,16 @@ const app: Application = express();
 app.use(cors());
 app.use(express.json());
 
-// Rutas
-// app.use('/api/v1/study', studyRoutes);
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", env: process.env.NODE_ENV });
+});
 
-// Manejador de errores global
+// Rutas
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1", studySessionRoutes);
+app.use("/api/v1", catalogRoutes);
+app.use("/api/v1", statsRoutes);
+
 app.use((err: any, req: any, res: any, next: any) => {
   res.status(err.status || 500).json({
     error: err.message || "Internal Server Error",
