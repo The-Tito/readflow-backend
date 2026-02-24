@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import fs from "fs";
-import { StudySessionService } from "../services/StudySessionService";
+import { StudySessionService } from "../services/StudySession.service";
 import { AuthRequest } from "../middlewares/auth.middleware";
 
 const studySessionService = new StudySessionService();

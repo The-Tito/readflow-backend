@@ -4,6 +4,7 @@ import cors from "cors";
 import authRoutes from "./routes/auth.routes";
 import studySessionRoutes from "./routes/studySession.routes";
 import catalogRoutes from "./routes/catalogs.routes";
+import statsRoutes from "./routes/stats.routes";
 const port = process.env.PORT || 3000;
 
 const app: Application = express();
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1", studySessionRoutes);
 app.use("/api/v1", catalogRoutes);
+app.use("/api/v1", statsRoutes);
 
 app.get("/", (req, res) => {
   res.send("Welcome to ReadFlow Backend");

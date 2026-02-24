@@ -112,12 +112,12 @@ model Attempt {
   id                 Int       @id @default(autoincrement())
   userId             Int       @map("user_id")
   studySessionId     Int       @map("study_session_id")
-  timingTag          String    @map("timing_tag") @db.VarChar(10) // "T0" o "T48"
+  timingTag          String    @map("timing_tag") @db.VarChar(10)
   userAnswers        Json      @map("user_answers") @db.JsonB
   score              Float
-  maxPossibleScore   Float     @default(10.0) @map("max_possible_score")
+  maxPossibleScore   Float     @default(100.0) @map("max_possible_score")
   aiFeedback         Json?     @map("ai_feedback") @db.JsonB
-  iriValue           Float?    @map("iri_value") // Solo existe en T48
+  iriValue           Float?    @map("iri_value")
   startedAt          DateTime  @default(now()) @map("started_at") @db.Timestamptz
   completedAt        DateTime? @map("completed_at") @db.Timestamptz
   gradingCompletedAt DateTime? @map("grading_completed_at") @db.Timestamptz
@@ -125,7 +125,6 @@ model Attempt {
   user         User         @relation(fields: [userId], references: [id])
   studySession StudySession @relation(fields: [studySessionId], references: [id])
 
-  // Un intento es único por sesión Y etiqueta de tiempo (solo un T0 por sesión)
   @@unique([studySessionId, timingTag], name: "unique_attempt_per_timing")
   @@index([userId])
   @@index([studySessionId])
@@ -152,10 +151,15 @@ model ScheduledReminder {
 
 model UserStreak {
   id               Int       @id @default(autoincrement())
-  userId           Int       @unique @map("user_id") 
+  userId           Int       @unique @map("user_id")
   currentStreak    Int       @default(0) @map("current_streak")
   bestStreak       Int       @default(0) @map("best_streak")
   lastActivityDate DateTime? @map("last_activity_date") @db.Timestamptz
+  averageIri        Float?   @default(0) @map("average_iri")
+  bestIri           Float?   @default(0) @map("best_iri")
+  totalSessions     Int      @default(0) @map("total_sessions")
+  totalT48Completed Int      @default(0) @map("total_t48_completed")
+
   updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id])
