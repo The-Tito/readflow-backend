@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { StatisticsService } from "../services/Statistics.service";
+import { StatisticsService } from "../services/statistics.service";
 import { AuthRequest } from "../middlewares/auth.middleware";
 
 const statisticsService = new StatisticsService();
