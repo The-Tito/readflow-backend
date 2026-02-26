@@ -44,14 +44,7 @@ function serializeBigInt(obj: any): any {
 }
 
 export class StatisticsService {
-  // Estadísticas globales + timeline del usuario
-
   async getUserStats(userId: number) {
-    const [statsRaw] = await prisma.$queryRaw<UserRetentionStats[]>`
-      SELECT * FROM view_user_retention_stats
-      WHERE user_id = ${userId}
-    `;
-
     const timelineRaw = await prisma.$queryRaw<SessionIriTimeline[]>`
       SELECT * FROM view_session_iri_timeline
       WHERE user_id = ${userId}
@@ -60,60 +53,142 @@ export class StatisticsService {
     const streak = await prisma.userStreak.findUnique({
       where: { userId },
       select: {
+        averageIri: true,
+        bestIri: true,
+        totalT48Completed: true,
         currentStreak: true,
-        bestStreak: true,
       },
     });
 
-    const stats = serializeBigInt(statsRaw);
     const timeline = serializeBigInt(timelineRaw);
 
+    return {
+      kpis: {
+        avgIri: streak?.averageIri ?? null, // Retención promedio
+        bestIri: streak?.bestIri ?? null, // Mejor IRI individual
+        sessionsCompleted: streak?.totalT48Completed ?? 0, // Sesiones espaciadas completadas
+        currentStreak: streak?.currentStreak ?? 0,
+      },
+
+      // Gráfica 1: línea de tiempo de IRI por sesión
+      iriTimeline: timeline.map((s: any) => ({
+        sessionId: s.session_id,
+        title: s.title,
+        createdAt: s.created_at,
+        evaluationType: s.evaluation_type,
+        difficultyLevel: s.difficulty_level,
+        iri: s.iri, // null si aún no tiene T48
+      })),
+
+      // Gráfica 2: barras agrupadas T0 vs T48 por sesión
+      scoreComparison: timeline.map((s: any) => ({
+        sessionId: s.session_id,
+        title: s.title,
+        createdAt: s.created_at,
+        scoreT0: s.score_t0,
+        scoreT48: s.score_t48,
+        scoreImprovement: s.score_improvement,
+      })),
+    };
+  }
+
+  async getHypothesisStats() {
+    // Stats agregadas de todos los usuarios
+    const globalRaw = await prisma.$queryRaw<UserRetentionStats[]>`
+      SELECT * FROM view_user_retention_stats
+      WHERE sessions_with_t48 > 0
+    `;
+
+    const global = serializeBigInt(globalRaw);
+
+    // Promedio global de IRI entre todos los usuarios
+    const totalUsers = global.length;
+    const globalAvgIri =
+      totalUsers > 0
+        ? parseFloat(
+            (
+              global.reduce(
+                (sum: number, u: any) => sum + (u.avg_iri ?? 0),
+                0,
+              ) / totalUsers
+            ).toFixed(1),
+          )
+        : null;
+
+    const globalAvgT0 =
+      totalUsers > 0
+        ? parseFloat(
+            (
+              global.reduce(
+                (sum: number, u: any) => sum + (u.avg_score_t0 ?? 0),
+                0,
+              ) / totalUsers
+            ).toFixed(1),
+          )
+        : null;
+
+    const globalAvgT48 =
+      totalUsers > 0
+        ? parseFloat(
+            (
+              global.reduce(
+                (sum: number, u: any) => sum + (u.avg_score_t48 ?? 0),
+                0,
+              ) / totalUsers
+            ).toFixed(1),
+          )
+        : null;
+
+    // Progreso hacia la hipótesis del 20%
+    // Base teórica: 50 (sin aprendizaje espaciado)
+    // Meta: IRI promedio >= 70 (50 + 20)
     const BASE_IRI = 50;
     const TARGET_IMPROVEMENT = 20;
-    const currentAvgIri = stats?.avg_iri ?? 0;
-    const hypothesisProgress = stats?.avg_iri
+    const progressPercent = globalAvgIri
       ? parseFloat(
           Math.min(
-            ((currentAvgIri - BASE_IRI) / TARGET_IMPROVEMENT) * 100,
+            ((globalAvgIri - BASE_IRI) / TARGET_IMPROVEMENT) * 100,
             100,
           ).toFixed(1),
         )
       : 0;
 
     return {
-      kpis: {
-        totalSessions: stats?.total_sessions ?? 0,
-        sessionsWithT0: stats?.sessions_with_t0 ?? 0,
-        sessionsWithT48: stats?.sessions_with_t48 ?? 0,
-        avgScoreT0: stats?.avg_score_t0 ?? null,
-        avgScoreT48: stats?.avg_score_t48 ?? null,
-        avgIri: stats?.avg_iri ?? null,
-        bestIri: stats?.best_iri ?? null,
-        avgScoreImprovement: stats?.avg_score_improvement ?? null,
-        currentStreak: streak?.currentStreak ?? 0,
-        bestStreak: streak?.bestStreak ?? 0,
-        lastActivityAt: stats?.last_activity_at ?? null,
-      },
-
       hypothesis: {
+        description:
+          "El aprendizaje espaciado mejora la retención en un 20% respecto a la evaluación inmediata",
         baseIri: BASE_IRI,
         targetImprovement: TARGET_IMPROVEMENT,
-        currentAvgIri,
-        progressPercent: hypothesisProgress,
-        achieved: currentAvgIri >= BASE_IRI + TARGET_IMPROVEMENT,
+        targetIri: BASE_IRI + TARGET_IMPROVEMENT,
+        globalAvgIri,
+        progressPercent,
+        achieved:
+          globalAvgIri !== null &&
+          globalAvgIri >= BASE_IRI + TARGET_IMPROVEMENT,
       },
 
-      timeline: timeline.map((s: any) => ({
-        sessionId: s.session_id,
-        title: s.title,
-        createdAt: s.created_at,
-        difficultyLevel: s.difficulty_level,
-        evaluationType: s.evaluation_type,
-        scoreT0: s.score_t0,
-        scoreT48: s.score_t48,
-        iri: s.iri,
-        scoreImprovement: s.score_improvement,
+      // Comparación global T0 vs T48
+      globalScores: {
+        avgScoreT0: globalAvgT0,
+        avgScoreT48: globalAvgT48,
+        avgImprovement:
+          globalAvgT0 !== null && globalAvgT48 !== null
+            ? parseFloat((globalAvgT48 - globalAvgT0).toFixed(1))
+            : null,
+      },
+
+      // Detalle por usuario para análisis académico
+      perUser: global.map((u: any) => ({
+        userId: u.user_id,
+        username: u.username,
+        sessionsWithT48: u.sessions_with_t48,
+        avgScoreT0: u.avg_score_t0,
+        avgScoreT48: u.avg_score_t48,
+        avgIri: u.avg_iri,
+        bestIri: u.best_iri,
       })),
+
+      totalUsersAnalyzed: totalUsers,
     };
   }
 }

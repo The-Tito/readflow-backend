@@ -126,6 +126,20 @@ export class AttemptService {
 
     const timingTag = completedT0 ? "T48" : "T0";
 
+    if (timingTag === "T48") {
+      const reminder = await prisma.scheduledReminder.findFirst({
+        where: {
+          studySessionId,
+          timingTag: "T48",
+          status: "pending",
+        },
+      });
+
+      if (reminder && reminder.scheduledFor > new Date()) {
+        throw new Error("T48_NOT_AVAILABLE_YET");
+      }
+    }
+
     // Verificar que no exista ya un attempt para este timing
     const existingAttempt = await prisma.attempt.findFirst({
       where: { studySessionId, timingTag },
@@ -260,7 +274,7 @@ export class AttemptService {
       }
 
       console.log(
-        `📊 IRI calculado: ${iriValue}% | Sesión [ID: ${studySessionId}]`,
+        `IRI calculado: ${iriValue}% | Sesión [ID: ${studySessionId}]`,
       );
     }
 

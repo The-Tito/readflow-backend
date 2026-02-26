@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth.routes";
 import studySessionRoutes from "./routes/studySession.routes";
 import catalogRoutes from "./routes/catalogs.routes";
 import statsRoutes from "./routes/stats.routes";
+import userRoutes from "./routes/user.routes";
 const port = process.env.PORT || 3000;
 
 const app: Application = express();
@@ -22,6 +23,7 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1", studySessionRoutes);
 app.use("/api/v1", catalogRoutes);
 app.use("/api/v1", statsRoutes);
+app.use("/api/v1/users", userRoutes);
 
 app.use((err: any, req: any, res: any, next: any) => {
   res.status(err.status || 500).json({

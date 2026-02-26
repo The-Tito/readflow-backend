@@ -47,6 +47,14 @@ export class AttemptController {
             .status(404)
             .json({ message: "El quiz de esta sesión no está disponible." });
           break;
+        case "T48_NOT_AVAILABLE_YET":
+          res
+            .status(425)
+            .json({
+              message:
+                "El repaso espaciado aún no está disponible. Espera a recibir la notificación.",
+            });
+          break;
         case "INTENTO_YA_REGISTRADO":
           res.status(409).json({
             message: "Ya existe un intento registrado para esta etapa.",
