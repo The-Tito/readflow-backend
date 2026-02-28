@@ -1,6 +1,7 @@
-import { Router } from "express";
-import { AuthMiddleware } from "../middlewares/auth.middleware";
+import { Router, Request, Response } from "express";
+import { AuthMiddleware, AuthRequest } from "../middlewares/auth.middleware";
 import { StatisticsController } from "../controllers/statistics.controller";
+import { EmailService } from "../services/email.service";
 
 const router = Router();
 

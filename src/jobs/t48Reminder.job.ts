@@ -1,5 +1,8 @@
 import cron from "node-cron";
 import { prisma } from "../config/prisma";
+import { EmailService } from "../services/email.service";
+
+const APP_URL = process.env.APP_URL || "http://localhost:3000";
 
 // Corre cada 30 minutos para detectar reminders pendientes
 // Una vez implementado el servicio de email, se llama aquí
@@ -34,11 +37,13 @@ export function startT48ReminderJob() {
 
       for (const reminder of pendingReminders) {
         try {
-          // ── Aquí irá el envío de email cuando implementes el servicio ──
-          // Ejemplo: await emailService.sendT48Reminder(reminder.user, reminder.studySession);
-          console.log(
-            `[T48Reminder] Notificación para ${reminder.user.email} — Sesión: "${reminder.studySession.title}"`,
-          );
+          await EmailService.sendT48Reminder({
+            username: reminder.user.username,
+            email: reminder.user.email,
+            sessionTitle: reminder.studySession.title,
+            studySessionId: reminder.studySession.id,
+            appUrl: APP_URL,
+          });
 
           await prisma.scheduledReminder.update({
             where: { id: reminder.id },
@@ -47,9 +52,8 @@ export function startT48ReminderJob() {
               sentAt: new Date(),
             },
           });
-
           console.log(
-            `[T48Reminder] Reminder [ID: ${reminder.id}] marcado como enviado`,
+            `[T48Reminder] Email enviado a ${reminder.user.email} — Sesión: "${reminder.studySession.title}"`,
           );
         } catch (reminderError) {
           console.error(

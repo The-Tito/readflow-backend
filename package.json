@@ -28,7 +28,8 @@
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "pg": "^8.18.0",
-    "pino": "^10.3.0"
+    "pino": "^10.3.0",
+    "resend": "^6.9.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
