@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { HistoryService } from "../services/History.service";
+import { HistoryService } from "../services/history.service";
 import { AuthRequest } from "../middlewares/auth.middleware";
 
 const historyService = new HistoryService();

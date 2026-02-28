@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AIService } from "./AI.service";
-import { DocumentService } from "./Document.service";
+import { DocumentService } from "./document.service";
 import fs from "fs";
 import { PrismaClient } from "@prisma/client";
 import { StudySession } from "../controllers/studySession.controller";
@@ -148,7 +148,43 @@ export class StudySessionService {
       },
     });
 
-    const timingTag = completedT0Attempt ? "48" : "T0";
+    if (completedT0Attempt) {
+      const reminder = await prisma.scheduledReminder.findFirst({
+        where: {
+          studySessionId,
+          timingTag: "T48",
+          status: "pending",
+        },
+      });
+
+      if (reminder && reminder.scheduledFor > new Date()) {
+        const msRemaining = reminder.scheduledFor.getTime() - Date.now();
+        const hoursRemaining = parseFloat(
+          (msRemaining / (1000 * 60 * 60)).toFixed(1),
+        );
+        const minutesRemaining = Math.ceil(msRemaining / (1000 * 60));
+        return {
+          studySession: {
+            id: session.id,
+            title: session.title,
+            summaryBody: session.summaryBody,
+            difficultyLevel: session.difficultyLevel.displayName,
+            evaluationType: session.evaluationType.displayName,
+            createdAt: session.createdAt,
+          },
+          quiz: {
+            available: false,
+            timingTag: "T48",
+            scheduledFor: reminder.scheduledFor,
+            hoursRemaining,
+            minutesRemaining,
+            message: `El repaso espaciado estará disponible en ${hoursRemaining} horas`,
+          },
+        };
+      }
+    }
+
+    const timingTag = completedT0Attempt ? "T48" : "T0";
     const quizData =
       timingTag === "T0"
         ? session.quizData.quizDataT0
@@ -164,6 +200,7 @@ export class StudySessionService {
         createdAt: session.createdAt,
       },
       quizData: {
+        available: true,
         timingTag,
         data: quizData,
       },

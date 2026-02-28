@@ -38,6 +38,10 @@ export class HistoryService {
       else if (!t48Attempt) status = "t0_completed";
       else status = "completed";
 
+      const reminder = (session as any).reminders?.[0] ?? null;
+      const scheduledFor = reminder?.scheduledFor ?? null;
+      const t48Available = scheduledFor ? scheduledFor <= new Date() : false;
+
       return {
         id: session.id,
         title: session.title,
@@ -50,6 +54,8 @@ export class HistoryService {
         },
         retention,
         status,
+        t48AvailableAt: scheduledFor,
+        t48Available,
       };
     });
   }
