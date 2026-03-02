@@ -4,6 +4,10 @@ import { startTokenCleanupJob } from "./jobs/tokenCleanup.job";
 
 const PORT = parseInt(process.env.PORT || "3333", 10);
 
+console.log(
+  "DATABASE_URL:",
+  process.env.DATABASE_URL ? "definida" : "undefined",
+);
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`readflow-api corriendo en puerto ${PORT}`);
   console.log(`Ambiente: ${process.env.NODE_ENV}`);
