@@ -126,6 +126,20 @@ export class AttemptService {
 
     const timingTag = completedT0 ? "T48" : "T0";
 
+    if (timingTag === "T48") {
+      const reminder = await prisma.scheduledReminder.findFirst({
+        where: {
+          studySessionId,
+          timingTag: "T48",
+          status: "pending",
+        },
+      });
+
+      if (reminder && reminder.scheduledFor > new Date()) {
+        throw new Error("T48_NOT_AVAILABLE_YET");
+      }
+    }
+
     // Verificar que no exista ya un attempt para este timing
     const existingAttempt = await prisma.attempt.findFirst({
       where: { studySessionId, timingTag },
@@ -174,6 +188,16 @@ export class AttemptService {
       aiFeedback = essayResult.aiFeedback;
     }
 
+    // Calcular IRI si es T48
+    // IRI = min((scoreT48 / scoreT0) * 100, 100)
+    // Solo aplica en T48 y solo si T0 tuvo score > 0 para evitar división por cero
+    let iriValue: number | null = null;
+
+    if (timingTag === "T48" && completedT0 && completedT0.score > 0) {
+      const rawIri = (score / completedT0.score) * 100;
+      iriValue = parseFloat(Math.min(rawIri, 100).toFixed(1));
+    }
+
     // Guardar el Attempt
     const now = new Date();
     const attempt = await prisma.attempt.create({
@@ -185,6 +209,7 @@ export class AttemptService {
         score,
         maxPossibleScore: 100.0,
         aiFeedback,
+        iriValue,
         startedAt: now,
         completedAt: now,
         gradingCompletedAt: now,
@@ -209,7 +234,47 @@ export class AttemptService {
         },
       });
       console.log(
-        `⏰ Reminder T48 programado para: ${scheduledFor.toISOString()}`,
+        `Reminder T48 programado para: ${scheduledFor.toISOString()}`,
+      );
+      await prisma.userStreak.upsert({
+        where: { userId },
+        create: {
+          userId,
+          totalSessions: 1,
+        },
+        update: {
+          totalSessions: { increment: 1 },
+          lastActivityDate: now,
+        },
+      });
+    } else if (timingTag === "T48" && iriValue !== null) {
+      // Actualizar métricas de retención en UserStreak
+      const streak = await prisma.userStreak.findUnique({ where: { userId } });
+
+      if (streak) {
+        const prevTotal = streak.totalT48Completed ?? 0;
+        const prevAvg = streak.averageIri ?? 0;
+        const prevBest = streak.bestIri ?? 0;
+
+        // Promedio incremental: no necesita recalcular todas las sesiones
+        const newAverage = parseFloat(
+          ((prevAvg * prevTotal + iriValue) / (prevTotal + 1)).toFixed(1),
+        );
+        const newBest = iriValue > prevBest ? iriValue : prevBest;
+
+        await prisma.userStreak.update({
+          where: { userId },
+          data: {
+            averageIri: newAverage,
+            bestIri: newBest,
+            totalT48Completed: { increment: 1 },
+            lastActivityDate: now,
+          },
+        });
+      }
+
+      console.log(
+        `IRI calculado: ${iriValue}% | Sesión [ID: ${studySessionId}]`,
       );
     }
 
@@ -220,6 +285,7 @@ export class AttemptService {
         timingTag: attempt.timingTag,
         score: attempt.score,
         maxPossibleScore: attempt.maxPossibleScore,
+        iriValue: attempt.iriValue,
         completedAt: attempt.completedAt,
       },
       feedback: aiFeedback,

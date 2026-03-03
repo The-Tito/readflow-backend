@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { CatalogService } from "../services/CatalogService";
+import { CatalogService } from "../services/Catalog.service";
 import { AuthRequest } from "../middlewares/auth.middleware";
 
 const catalogService = new CatalogService();

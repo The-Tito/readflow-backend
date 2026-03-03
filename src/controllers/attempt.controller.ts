@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { AttemptService } from "../services/Attempt.service";
+import { AttemptService } from "../services/attempt.service";
 import { AuthRequest } from "../middlewares/auth.middleware";
 
 const attemptService = new AttemptService();
@@ -46,6 +46,12 @@ export class AttemptController {
           res
             .status(404)
             .json({ message: "El quiz de esta sesión no está disponible." });
+          break;
+        case "T48_NOT_AVAILABLE_YET":
+          res.status(425).json({
+            message:
+              "El repaso espaciado aún no está disponible. Espera a recibir la notificación.",
+          });
           break;
         case "INTENTO_YA_REGISTRADO":
           res.status(409).json({
