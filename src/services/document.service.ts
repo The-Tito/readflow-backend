@@ -19,7 +19,17 @@ export class DocumentService {
     return newDocument;
   }
 
-  // Chame agrega aquí tu método de:
-  // async checkHashExists(hash: string) { ... }
-  // para el verificado del hasheo
+  async checkHashExists(
+    userId: number,
+    hash: string
+  ): Promise<Document | null> {
+    return await prisma.document.findUnique({
+      where: {
+        unique_user_document: {
+          userId,
+          documentHash: hash,
+        },
+      },
+    });
+  }
 }
