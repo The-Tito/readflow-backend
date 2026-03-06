@@ -1,5 +1,4 @@
 import express, { Application } from "express";
-require("dotenv").config();
 import cors from "cors";
 import authRoutes from "./routes/auth.routes";
 import studySessionRoutes from "./routes/studySession.routes";
@@ -7,6 +6,9 @@ import catalogRoutes from "./routes/catalogs.routes";
 import statsRoutes from "./routes/stats.routes";
 import userRoutes from "./routes/user.routes";
 import cookieParser from "cookie-parser";
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
 
 const app: Application = express();
 

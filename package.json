@@ -18,6 +18,15 @@
     "@google/genai": "^1.41.0",
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.19.2",
+    "@types/bcrypt": "^6.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^25.3.0",
+    "@types/node-cron": "^3.0.11",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
@@ -29,22 +38,13 @@
     "node-cron": "^4.2.1",
     "pg": "^8.18.0",
     "pino": "^10.3.0",
-    "resend": "^6.9.3"
+    "prisma": "^6.19.2",
+    "resend": "^6.9.3",
+    "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/cookie-parser": "^1.4.10",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/multer": "^2.0.0",
-    "@types/node": "^25.3.0",
-    "@types/node-cron": "^3.0.11",
     "nodemon": "^3.1.11",
-    "prisma": "^6.19.2",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.9.3"
+    "ts-node-dev": "^2.0.0"
   },
   "overrides": {
     "ajv": "^8.12.0",
