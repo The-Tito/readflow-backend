@@ -48,7 +48,7 @@ function gradeMultipleChoice(
     };
   });
 
-  const score = parseFloat(((correct / questions.length) * 10).toFixed(1));
+  const score = parseFloat(((correct / questions.length) * 100).toFixed(1));
 
   return {
     score,
@@ -236,18 +236,14 @@ export class AttemptService {
       console.log(
         `Reminder T48 programado para: ${scheduledFor.toISOString()}`,
       );
-      await prisma.userStreak.upsert({
+      await prisma.userStreak.update({
         where: { userId },
-        create: {
-          userId,
-          totalSessions: 1,
-        },
-        update: {
+        data: {
           totalSessions: { increment: 1 },
-          lastActivityDate: now,
         },
       });
-    } else if (timingTag === "T48" && iriValue !== null) {
+    }
+    if (timingTag === "T48" && iriValue !== null) {
       // Actualizar métricas de retención en UserStreak
       const streak = await prisma.userStreak.findUnique({ where: { userId } });
 
@@ -268,7 +264,6 @@ export class AttemptService {
             averageIri: newAverage,
             bestIri: newBest,
             totalT48Completed: { increment: 1 },
-            lastActivityDate: now,
           },
         });
       }
