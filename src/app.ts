@@ -6,6 +6,7 @@ import catalogRoutes from "./routes/catalogs.routes";
 import statsRoutes from "./routes/stats.routes";
 import userRoutes from "./routes/user.routes";
 import cookieParser from "cookie-parser";
+import { globalRateLimit } from "./middlewares/rateLimit.middleware";
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
@@ -16,6 +17,7 @@ const app: Application = express();
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
+app.use(globalRateLimit);
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok", env: process.env.NODE_ENV });
