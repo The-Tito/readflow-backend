@@ -99,6 +99,7 @@ export class AIPromptBuilder {
     return `
 Actúa como un profesor universitario experto. Analiza el documento proporcionado.
 
+
 Parámetros de la sesión:
 - Nivel de dificultad: ${summaryDifficultyName}
 

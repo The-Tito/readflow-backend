@@ -8,8 +8,62 @@ export class HistoryController {
   static async getStudySessions(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
-      const result = await historyService.getStudySessions(userId);
-      res.status(200).json({ sessions: result });
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const limit = Math.min(
+        50,
+        Math.max(1, parseInt(req.query.limit as string) || 10),
+      );
+      let from: Date | undefined;
+      let to: Date | undefined;
+      if (req.query.from) {
+        from = new Date(req.query.from as string);
+        if (isNaN(from.getTime())) {
+          return res.status(400).json({
+            message: "Fecha 'from' inválida. Usa el formato YYYY-MM-DD.",
+          });
+        }
+        from.setHours(0, 0, 0, 0);
+      }
+      if (req.query.to) {
+        to = new Date(req.query.to as string);
+        if (isNaN(to.getTime())) {
+          return res.status(400).json({
+            message: "Fecha 'to' inválida. Usa el formato YYYY-MM-DD.",
+          });
+        }
+        to.setHours(23, 59, 59, 999);
+      }
+
+      if (from && to && from > to) {
+        return res.status(400).json({
+          message: "La fecha 'from' no puede ser mayor que 'to'.",
+        });
+      }
+      const validStatuses = ["pending", "t0_completed", "completed"];
+      const statusParam = req.query.status as string | undefined;
+
+      if (statusParam && !validStatuses.includes(statusParam)) {
+        return res.status(400).json({
+          message: `Status inválido. Valores permitidos: ${validStatuses.join(", ")}.`,
+        });
+      }
+
+      const status = statusParam as
+        | "pending"
+        | "t0_completed"
+        | "completed"
+        | undefined;
+
+      const result = await historyService.getStudySessions({
+        userId,
+        page,
+        limit,
+        from,
+        to,
+        status,
+      });
+
+      res.status(200).json(result);
     } catch (error: any) {
       console.error("Error en getStudySessions:", error);
       res
