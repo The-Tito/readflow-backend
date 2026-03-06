@@ -4,12 +4,17 @@ import { StudySession } from "../controllers/studySession.controller";
 import { AuthMiddleware } from "../middlewares/auth.middleware";
 import { AttemptController } from "../controllers/attempt.controller";
 import { HistoryController } from "../controllers/history.controller";
+import {
+  createSessionRateLimit,
+  submitAttemptRateLimit,
+} from "../middlewares/rateLimit.middleware";
 
 const router = Router();
 
 router.post(
   "/study-session",
   AuthMiddleware,
+  createSessionRateLimit,
   upload.single("document"),
   StudySession.createStudySession,
 );
@@ -23,6 +28,7 @@ router.get(
 router.post(
   "/study-session/:id/attempt",
   AuthMiddleware,
+  submitAttemptRateLimit,
   AttemptController.submitAttempt,
 );
 

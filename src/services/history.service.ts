@@ -1,45 +1,70 @@
 import { PrismaClient } from "@prisma/client";
+import { GetStudySessionsParams } from "../interfaces/studySession.interface";
+import { title } from "node:process";
 
 const prisma = new PrismaClient();
 
 export class HistoryService {
   // Lista de todas las sesiones del usuario
-  async getStudySessions(userId: number) {
-    const sessions = await prisma.studySession.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      include: {
-        difficultyLevel: { select: { displayName: true } },
-        evaluationType: { select: { displayName: true } },
-        attempts: {
-          where: { completedAt: { not: null } },
-          select: {
-            timingTag: true,
-            score: true,
-            maxPossibleScore: true,
-            completedAt: true,
+  async getStudySessions(params: GetStudySessionsParams) {
+    const { userId, page, limit, from, to, status } = params;
+
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      userId,
+      ...(from || to
+        ? {
+            createdAt: {
+              ...(from ? { gte: from } : {}),
+              ...(to ? { lte: to } : {}),
+            },
+          }
+        : {}),
+    };
+
+    const [sessions, totalCount] = await Promise.all([
+      prisma.studySession.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        include: {
+          difficultyLevel: { select: { displayName: true } },
+          evaluationType: { select: { displayName: true } },
+          attempts: {
+            where: { completedAt: { not: null } },
+            select: {
+              timingTag: true,
+              score: true,
+              maxPossibleScore: true,
+              completedAt: true,
+            },
+          },
+          reminders: {
+            where: { timingTag: "T48", status: "pending" },
+            select: { scheduledFor: true },
+            take: 1,
           },
         },
-      },
-    });
+      }),
+      prisma.studySession.count({ where }),
+    ]);
 
-    return sessions.map((session) => {
+    const mappedSessions = sessions.map((session) => {
       const t0Attempt = session.attempts.find((a) => a.timingTag === "T0");
       const t48Attempt = session.attempts.find((a) => a.timingTag === "T48");
 
-      // Retención = score directo del T48, null si aún no se ha completado
       const retention = t48Attempt
         ? parseFloat(t48Attempt.score.toFixed(1))
         : null;
 
-      // Estado de la sesión para que el frontend sepa qué mostrar
-      let status: "pending" | "t0_completed" | "completed";
-      if (!t0Attempt) status = "pending";
-      else if (!t48Attempt) status = "t0_completed";
-      else status = "completed";
+      let sessionStatus: "pending" | "t0_completed" | "completed";
+      if (!t0Attempt) sessionStatus = "pending";
+      else if (!t48Attempt) sessionStatus = "t0_completed";
+      else sessionStatus = "completed";
 
-      const reminder = (session as any).reminders?.[0] ?? null;
-      const scheduledFor = reminder?.scheduledFor ?? null;
+      const scheduledFor = session.reminders?.[0]?.scheduledFor ?? null;
       const t48Available = scheduledFor ? scheduledFor <= new Date() : false;
 
       return {
@@ -53,11 +78,31 @@ export class HistoryService {
           t48: t48Attempt ? parseFloat(t48Attempt.score.toFixed(1)) : null,
         },
         retention,
-        status,
+        status: sessionStatus,
         t48AvailableAt: scheduledFor,
         t48Available,
       };
     });
+
+    const filteredSessions = status
+      ? mappedSessions.filter((s) => s.status === status)
+      : mappedSessions;
+
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    return {
+      sessions: filteredSessions,
+      pagination: {
+        total: totalCount,
+        totalPages,
+        currentPage: page,
+        limit,
+        hasNextPage,
+        hasPrevPage,
+      },
+    };
   }
 
   // Detalle completo de una sesión
