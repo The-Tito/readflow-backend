@@ -1,5 +1,6 @@
 import rateLimit from "express-rate-limit";
 
+// ── Helper para calcular minutos restantes ──────────────────
 const getRetryMessage = (retryAfter: number) => {
   const minutes = Math.ceil(retryAfter / 60);
   return minutes === 1
@@ -8,6 +9,7 @@ const getRetryMessage = (retryAfter: number) => {
 };
 
 // RATE LIMIT GLOBAL
+// Aplica a todas las rutas — protección general contra abuso
 
 export const globalRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -15,11 +17,12 @@ export const globalRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    return (
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0]!!.trim() ||
-      req.ip ||
-      "unknown"
-    );
+    const forwarded = (req.headers["x-forwarded-for"] as string)
+      ?.split(",")[0]!!
+      .trim();
+    if (forwarded) return forwarded;
+    const ip = req.socket?.remoteAddress ?? "unknown";
+    return ip.startsWith("::ffff:") ? ip.substring(7) : ip;
   },
   handler: (req, res, next, options) => {
     const retryAfter = Math.ceil(
@@ -58,6 +61,8 @@ export const createSessionRateLimit = rateLimit({
 });
 
 // RATE LIMIT INTENTOS DE QUIZ
+// 10 intentos por hora por usuario
+
 export const submitAttemptRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
   max: 10,
@@ -79,6 +84,7 @@ export const submitAttemptRateLimit = rateLimit({
 });
 
 // RATE LIMIT AUTH
+// 10 intentos por 15 minutos por IP
 
 export const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -86,11 +92,12 @@ export const authRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    return (
-      (req.headers["x-forwarded-for"] as string)?.split(",")[0]!!.trim() ||
-      req.ip ||
-      "unknown"
-    );
+    const forwarded = (req.headers["x-forwarded-for"] as string)
+      ?.split(",")[0]!!
+      .trim();
+    if (forwarded) return forwarded;
+    const ip = req.socket?.remoteAddress ?? "unknown";
+    return ip.startsWith("::ffff:") ? ip.substring(7) : ip;
   },
   handler: (req, res, next, options) => {
     const retryAfter = Math.ceil(

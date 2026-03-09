@@ -77,9 +77,43 @@ const ADDITIONAL_RULES: Record<number, string> = {
 };
 
 const QUESTION_COUNT_RULE: Record<number, string> = {
-  1: "Genera exactamente 5 preguntas DISTINTAS en t0 y 5 preguntas DISTINTAS en t48. Ninguna pregunta debe repetirse entre sets.",
+  1: "Genera exactamente 10 preguntas DISTINTAS en t0 y 10 preguntas DISTINTAS en t48. Ninguna pregunta debe repetirse entre sets.",
   2: "Genera exactamente 2 párrafos en t0 (cada uno con 5 blanks) y 2 párrafos DISTINTOS en t48. Ningún párrafo ni palabra debe repetirse entre sets.",
   3: "Extrae exactamente 5 conceptos clave del documento para 'required_concepts'. Estos serán usados para evaluar la síntesis libre del usuario.",
+};
+
+const SUMMARY_CONFIG: Record<
+  string,
+  { minWords: number; maxWords: number; instructions: string }
+> = {
+  Básico: {
+    minWords: 200,
+    maxWords: 400,
+    instructions: `
+- Usa lenguaje simple y accesible, evita tecnicismos innecesarios.
+- Explica los conceptos como si el lector no tuviera conocimiento previo del tema.
+- Prioriza los puntos más importantes y fáciles de entender.
+- Usa oraciones cortas y directas.`,
+  },
+  Intermedio: {
+    minWords: 400,
+    maxWords: 700,
+    instructions: `
+- Usa lenguaje claro pero introduce la terminología específica del tema.
+- Cubre los puntos principales y secundarios del documento.
+- Explica las relaciones entre los conceptos.
+- Mantén un equilibrio entre profundidad y accesibilidad.`,
+  },
+  Avanzado: {
+    minWords: 700,
+    maxWords: 1200,
+    instructions: `
+- Usa terminología técnica y especializada del dominio.
+- Cubre en profundidad todos los conceptos, argumentos y evidencias del documento.
+- Analiza las relaciones causales y las implicaciones de los temas tratados.
+- Incluye matices, excepciones y casos especiales mencionados en el documento.
+- El resumen debe ser suficientemente completo para que el estudiante pueda responder preguntas avanzadas sin releer el documento original.`,
+  },
 };
 
 // BUILDER PRINCIPAL
@@ -96,9 +130,12 @@ export class AIPromptBuilder {
     const questionCountRule =
       QUESTION_COUNT_RULE[evaluationTypeId] ?? QUESTION_COUNT_RULE[1];
 
-    return `
-Actúa como un profesor universitario experto. Analiza el documento proporcionado.
+    const summaryConfig =
+      SUMMARY_CONFIG[summaryDifficultyName] ?? SUMMARY_CONFIG["Intermedio"];
 
+    return `
+Actúa como un profesor universitario experto en síntesis y evaluación académica.
+Analiza exhaustivamente el documento proporcionado en su totalidad antes de generar la respuesta.
 
 Parámetros de la sesión:
 - Nivel de dificultad: ${summaryDifficultyName}
@@ -108,16 +145,26 @@ No incluyas explicaciones, comentarios, ni bloques de código Markdown (\`\`\`js
 No repitas los valores de ejemplo; genera contenido real basado en el documento.
 
 {
-  "title": "Título corto y relevante extraído del documento",
-  "summary": "Resumen estructurado del contenido principal (máx 300 palabras, nivel ${summaryDifficultyName})",
+  "title": "Título descriptivo y relevante extraído del tema principal del documento",
+  "summary": "Resumen completo del documento siguiendo las instrucciones de nivel indicadas abajo",
   "key_concepts": ["Concepto clave 1", "Concepto clave 2", "Concepto clave 3"],
   ${questionSchema}
 }
 
-Reglas estrictas:
+── INSTRUCCIONES PARA EL RESUMEN ──────────────────────────────────────────
+Extensión requerida: entre ${summaryConfig!!.minWords} y ${summaryConfig!!.maxWords} palabras.
+El resumen debe cubrir PROPORCIONALMENTE el contenido del documento. Si el documento es extenso,
+asegúrate de cubrir todas las secciones importantes, no solo la introducción.
+Estructura recomendada:
+1. Introducción: contexto y objetivo del documento
+2. Desarrollo: puntos principales, conceptos, datos y argumentos
+3. Conclusión: síntesis final y relevancia del tema
+${summaryConfig!!.instructions}
+
+── REGLAS GENERALES ────────────────────────────────────────────────────────
 1. ${questionCountRule}
-2. Adapta la complejidad al nivel: ${summaryDifficultyName}.
-3. Basa TODO el contenido ÚNICAMENTE en el documento proporcionado.
+2. Adapta la complejidad de las preguntas al nivel: ${summaryDifficultyName}.
+3. Basa TODO el contenido ÚNICAMENTE en el documento proporcionado. No inventes información.
 4. La salida debe ser JSON parseable directamente con JSON.parse(). Cualquier otro formato es incorrecto.
 ${additionalRules}
     `.trim();

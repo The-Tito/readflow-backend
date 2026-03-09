@@ -63,6 +63,11 @@ export class StudySession {
             message: "Error al guardar la sesión de estudio. Intenta de nuevo.",
           });
           break;
+        case "DOCUMENTO_YA_REGISTRADO":
+          res.status(409).json({
+            message: "Ya subiste este documento anteriormente.",
+          });
+          break;
 
         default:
           res.status(500).json({

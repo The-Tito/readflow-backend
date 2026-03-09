@@ -58,6 +58,12 @@ export class AttemptController {
             message: "Ya existe un intento registrado para esta etapa.",
           });
           break;
+        case "SESION_YA_COMPLETADA":
+          res.status(409).json({
+            message:
+              "Esta sesión ya fue completada. No puedes enviar más respuestas.",
+          });
+          break;
         default:
           res.status(500).json({
             message: "Error interno del servidor.",
