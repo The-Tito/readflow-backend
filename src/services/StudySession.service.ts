@@ -39,6 +39,14 @@ export class StudySessionService {
     // Chame aqui es donde sustituyes con la logica del hasheo
     // Hash SHA-256 del contenido binario del archivo
     const documentHash = computeFileHash(file.path);
+    const existingDocument = await documentService.checkHashExists(
+      userId,
+      documentHash,
+    );
+    if (existingDocument) {
+      fs.unlinkSync(file.path);
+      throw new Error("DOCUMENTO_YA_REGISTRADO");
+    }
     const newDocument = await documentService.createDocument({
       userId: userId,
       documentHash: documentHash,
