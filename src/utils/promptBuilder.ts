@@ -159,6 +159,8 @@ Estructura recomendada:
 1. Introducción: contexto y objetivo del documento
 2. Desarrollo: puntos principales, conceptos, datos y argumentos
 3. Conclusión: síntesis final y relevancia del tema
+IMPORTANTE: Separa cada párrafo con un salto de línea doble (\\n\\n) dentro del string JSON.
+Cada sección debe ser un párrafo independiente. No escribas el resumen como un bloque continuo de texto.
 ${summaryConfig!!.instructions}
 
 ── REGLAS GENERALES ────────────────────────────────────────────────────────
