@@ -14,16 +14,18 @@ model User {
   id        Int      @id @default(autoincrement())
   username  String   @db.VarChar(50)
   email     String   @unique @db.VarChar(255)
-  password  String   @db.VarChar(255)
+  password  String?  @db.VarChar(255)      
+  googleId  String?  @unique @map("google_id") @db.VarChar(255) 
+  avatar    String?  @map("avatar") @db.VarChar(500)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relaciones
-  streak     UserStreak?
-  documents  Document[]
-  sessions   StudySession[]
-  attempts   Attempt[]
-  reminders  ScheduledReminder[]
+  streak        UserStreak?
+  documents     Document[]
+  sessions      StudySession[]
+  attempts      Attempt[]
+  reminders     ScheduledReminder[]
   refreshTokens RefreshToken[]
 
   @@map("users")
@@ -40,18 +42,17 @@ model Document {
   user     User           @relation(fields: [userId], references: [id])
   sessions StudySession[]
 
-  // Índices y Restricciones
-  @@unique([userId, documentHash], name: "unique_user_document")
   @@index([userId])
   @@index([documentHash])
   @@map("documents")
 }
 
 model DifficultyLevel {
-  id             Int     @id @default(autoincrement())
-  slug           String  @unique @db.VarChar(50)
-  displayName    String  @map("display_name") @db.VarChar(100)
-  description    String? @db.Text // Puede ser opcional
+  id          Int     @id @default(autoincrement())
+  slug        String  @unique @db.VarChar(50)
+  displayName String  @map("display_name") @db.VarChar(100)
+  description String? @db.Text
+
   sessions StudySession[]
 
   @@map("difficulty_levels")
@@ -84,10 +85,10 @@ model StudySession {
   document        Document        @relation(fields: [documentId], references: [id])
   difficultyLevel DifficultyLevel @relation(fields: [difficultyLevelId], references: [id])
   evaluationType  EvaluationType  @relation(fields: [evaluationTypeId], references: [id])
-  
-  quizData        QuizData?       
-  attempts        Attempt[]
-  reminders       ScheduledReminder[]
+
+  quizData  QuizData?
+  attempts  Attempt[]
+  reminders ScheduledReminder[]
 
   @@index([userId])
   @@index([documentId])
@@ -98,7 +99,7 @@ model QuizData {
   id             Int       @id @default(autoincrement())
   studySessionId Int       @unique @map("study_session_id")
   quizDataT0     Json      @map("quiz_data_t0") @db.JsonB
-  quizDataT48    Json?     @map("quiz_data_t48") @db.JsonB // Opcional al inicio
+  quizDataT48    Json?     @map("quiz_data_t48") @db.JsonB
   isFrozen       Boolean   @default(false) @map("is_frozen")
   t0CompletedAt  DateTime? @map("t0_completed_at") @db.Timestamptz
   t48GeneratedAt DateTime? @map("t48_generated_at") @db.Timestamptz
@@ -151,17 +152,16 @@ model ScheduledReminder {
 }
 
 model UserStreak {
-  id               Int       @id @default(autoincrement())
-  userId           Int       @unique @map("user_id")
-  currentStreak    Int       @default(0) @map("current_streak")
-  bestStreak       Int       @default(0) @map("best_streak")
-  lastActivityDate DateTime? @map("last_activity_date") @db.Timestamptz
-  averageIri        Float?   @default(0) @map("average_iri")
-  bestIri           Float?   @default(0) @map("best_iri")
-  totalSessions     Int      @default(0) @map("total_sessions")
-  totalT48Completed Int      @default(0) @map("total_t48_completed")
-
-  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                Int       @id @default(autoincrement())
+  userId            Int       @unique @map("user_id")
+  currentStreak     Int       @default(0) @map("current_streak")
+  bestStreak        Int       @default(0) @map("best_streak")
+  lastActivityDate  DateTime? @map("last_activity_date") @db.Timestamptz
+  averageIri        Float?    @default(0) @map("average_iri")
+  bestIri           Float?    @default(0) @map("best_iri")
+  totalSessions     Int       @default(0) @map("total_sessions")
+  totalT48Completed Int       @default(0) @map("total_t48_completed")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id])
 
@@ -169,11 +169,11 @@ model UserStreak {
 }
 
 model RefreshToken {
-  id        Int      @id @default(autoincrement())
-  token     String   @unique @db.VarChar(512)
-  userId    Int      @map("user_id")
-  expiresAt DateTime @map("expires_at") @db.Timestamptz
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id        Int       @id @default(autoincrement())
+  token     String    @unique @db.VarChar(512)
+  userId    Int       @map("user_id")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   revokedAt DateTime? @map("revoked_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id])

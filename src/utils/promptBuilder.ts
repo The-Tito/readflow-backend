@@ -4,10 +4,11 @@ const FILL_IN_THE_BLANK_RULES = `
 Reglas adicionales para el tipo "Completar":
 - Cada párrafo debe tener EXACTAMENTE 5 blanks marcados como [BLANK] distribuidos naturalmente en el texto.
 - El array "blanks" debe tener EXACTAMENTE 5 objetos con "position" del 1 al 5 en orden de aparición.
-- El array "word_bank" debe tener EXACTAMENTE 7 palabras: las 5 respuestas correctas (en el mismo orden que aparecen en el párrafo) más 2 palabras de distracción plausibles pero incorrectas.
+- El array "word_bank" debe tener EXACTAMENTE 7 entradas: las 5 respuestas correctas (en el mismo orden de aparición en el párrafo) más 2 palabras de distracción plausibles pero incorrectas.
+- CRÍTICO: Si una misma palabra aparece más de una vez en los blanks, debes incluirla tantas veces como aparezca en el word_bank. Ejemplo: si "plataforma" es la respuesta de 3 blanks, el word_bank debe contener "plataforma" 3 veces. El word_bank es una lista con repeticiones permitidas, NO un conjunto de palabras únicas.
+- Para evitar repeticiones, PREFIERE elegir 5 palabras distintas para los blanks de cada párrafo. Solo repite una palabra si es absolutamente necesario para el contexto.
 - Los sets T0 y T48 deben usar párrafos y palabras COMPLETAMENTE DISTINTOS entre sí.
 `;
-
 const MULTIPLE_CHOICE_RULES = `
 Reglas adicionales para el tipo "Opción Múltiple":
 - Cada pregunta debe tener EXACTAMENTE 4 opciones en el array "options".
@@ -31,15 +32,15 @@ const MULTIPLE_CHOICE_QUESTION_EXAMPLE = `{
 const FILL_IN_THE_BLANK_QUESTION_EXAMPLE = `{
         "questions": [
           {
-            "paragraph": "Párrafo del documento con exactamente 5 palabras clave reemplazadas por [BLANK], distribuidas de forma [BLANK] a lo largo del [BLANK] para que el estudiante practique los [BLANK] del tema de manera [BLANK].",
+            "paragraph": "El [BLANK] es fundamental para el aprendizaje porque permite consolidar el [BLANK] a través de la práctica. Un buen [BLANK] incluye técnicas de revisión espaciada que fortalecen la [BLANK] y mejoran la [BLANK] a largo plazo.",
             "blanks": [
-              { "position": 1, "correct_answer": "palabra_correcta_1" },
-              { "position": 2, "correct_answer": "palabra_correcta_2" },
-              { "position": 3, "correct_answer": "palabra_correcta_3" },
-              { "position": 4, "correct_answer": "palabra_correcta_4" },
-              { "position": 5, "correct_answer": "palabra_correcta_5" }
+              { "position": 1, "correct_answer": "estudio" },
+              { "position": 2, "correct_answer": "conocimiento" },
+              { "position": 3, "correct_answer": "estudio" },
+              { "position": 4, "correct_answer": "memoria" },
+              { "position": 5, "correct_answer": "retención" }
             ],
-            "word_bank": ["palabra_correcta_1", "palabra_correcta_2", "palabra_correcta_3", "palabra_correcta_4", "palabra_correcta_5", "distractor_1", "distractor_2"]
+            "word_bank": ["estudio", "conocimiento", "estudio", "memoria", "retención", "distractor_1", "distractor_2"]
           }
         ]
       }`;

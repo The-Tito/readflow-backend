@@ -186,6 +186,18 @@ export class StudySessionService {
     }
 
     const timingTag = completedT0Attempt ? "T48" : "T0";
+
+    const completedCurrentAttempt = await prisma.attempt.findFirst({
+      where: {
+        studySessionId,
+        timingTag,
+        completedAt: { not: null },
+      },
+    });
+
+    if (completedCurrentAttempt) {
+      throw new Error("QUIZ_YA_COMPLETADO");
+    }
     const quizData =
       timingTag === "T0"
         ? session.quizData.quizDataT0
