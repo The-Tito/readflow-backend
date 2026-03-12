@@ -89,7 +89,7 @@ function gradeFillInTheBlank(
     return { paragraph: q.paragraph, blankResults };
   });
 
-  const score = parseFloat(((totalCorrect / totalBlanks) * 10).toFixed(1));
+  const score = parseFloat(((totalCorrect / totalBlanks) * 100).toFixed(1));
 
   return {
     score,
