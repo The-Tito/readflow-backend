@@ -38,7 +38,8 @@ export class StudySessionService {
 
     // Chame aqui es donde sustituyes con la logica del hasheo
     // Hash SHA-256 del contenido binario del archivo
-    const documentHash = computeFileHash(file.path);
+    const documentHash = `${Date.now()}_${file.originalname}`;
+
     const newDocument = await documentService.createDocument({
       userId: userId,
       documentHash: documentHash,
@@ -185,6 +186,18 @@ export class StudySessionService {
     }
 
     const timingTag = completedT0Attempt ? "T48" : "T0";
+
+    const completedCurrentAttempt = await prisma.attempt.findFirst({
+      where: {
+        studySessionId,
+        timingTag,
+        completedAt: { not: null },
+      },
+    });
+
+    if (completedCurrentAttempt) {
+      throw new Error("QUIZ_YA_COMPLETADO");
+    }
     const quizData =
       timingTag === "T0"
         ? session.quizData.quizDataT0

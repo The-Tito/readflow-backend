@@ -89,7 +89,7 @@ function gradeFillInTheBlank(
     return { paragraph: q.paragraph, blankResults };
   });
 
-  const score = parseFloat(((totalCorrect / totalBlanks) * 10).toFixed(1));
+  const score = parseFloat(((totalCorrect / totalBlanks) * 100).toFixed(1));
 
   return {
     score,
@@ -120,9 +120,18 @@ export class AttemptService {
     if (session.userId !== userId) throw new Error("ACCESO_DENEGADO");
     if (!session.quizData) throw new Error("QUIZ_NO_DISPONIBLE");
 
-    const completedT0 = await prisma.attempt.findFirst({
-      where: { studySessionId, timingTag: "T0", completedAt: { not: null } },
-    });
+    const [completedT0, completedT48] = await Promise.all([
+      prisma.attempt.findFirst({
+        where: { studySessionId, timingTag: "T0", completedAt: { not: null } },
+      }),
+      prisma.attempt.findFirst({
+        where: { studySessionId, timingTag: "T48", completedAt: { not: null } },
+      }),
+    ]);
+
+    if (completedT0 && completedT48) {
+      throw new Error("SESION_YA_COMPLETADA");
+    }
 
     const timingTag = completedT0 ? "T48" : "T0";
 

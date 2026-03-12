@@ -63,6 +63,11 @@ export class StudySession {
             message: "Error al guardar la sesión de estudio. Intenta de nuevo.",
           });
           break;
+        case "DOCUMENTO_YA_REGISTRADO":
+          res.status(409).json({
+            message: "Ya subiste este documento anteriormente.",
+          });
+          break;
 
         default:
           res.status(500).json({
@@ -98,6 +103,12 @@ export class StudySession {
           break;
         case "ACCESO_DENEGADO":
           res.status(403).json({ message: "No tienes acceso a esta sesión." });
+          break;
+        case "QUIZ_YA_COMPLETADO":
+          res.status(409).json({
+            completed: true,
+            message: "Este quiz ya fue completado.",
+          });
           break;
         case "QUIZ_NO_DISPONIBLE":
           res
