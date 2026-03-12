@@ -104,6 +104,12 @@ export class StudySession {
         case "ACCESO_DENEGADO":
           res.status(403).json({ message: "No tienes acceso a esta sesión." });
           break;
+        case "QUIZ_YA_COMPLETADO":
+          res.status(409).json({
+            completed: true,
+            message: "Este quiz ya fue completado.",
+          });
+          break;
         case "QUIZ_NO_DISPONIBLE":
           res
             .status(404)

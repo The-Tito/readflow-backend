@@ -52,9 +52,6 @@ export function startT48ReminderJob() {
               sentAt: new Date(),
             },
           });
-          console.log(
-            `[T48Reminder] Email enviado a ${reminder.user.email} — Sesión: "${reminder.studySession.title}"`,
-          );
         } catch (reminderError) {
           console.error(
             `[T48Reminder] Error procesando reminder [ID: ${reminder.id}]:`,
