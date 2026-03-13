@@ -44,7 +44,7 @@ export const createSessionRateLimit = rateLimit({
   keyGenerator: (req: any) => {
     // Limitar por usuario autenticado, no por IP
     // Así múltiples usuarios en la misma red no se afectan entre sí
-    return `user_${req.user?.id || req.ip}`;
+    return `user_${req.user?.id || ipKeyGenerator(req.ip!)}`;
   },
   handler: (req, res, next, options) => {
     const retryAfter = Math.ceil(
@@ -69,7 +69,7 @@ export const submitAttemptRateLimit = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req: any) => `user_${req.user?.id || req.ip}`,
+  keyGenerator: (req: any) => `user_${req.user?.id || ipKeyGenerator(req.ip!)}`,
   handler: (req, res, next, options) => {
     const retryAfter = Math.ceil(
       (options.windowMs - (Date.now() % options.windowMs)) / 1000,
