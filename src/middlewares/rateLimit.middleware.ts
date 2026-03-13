@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 // ── Helper para calcular minutos restantes ──────────────────
 const getRetryMessage = (retryAfter: number) => {
@@ -8,22 +8,17 @@ const getRetryMessage = (retryAfter: number) => {
     : `Intenta de nuevo en ${minutes} minutos.`;
 };
 
+// ============================================================
 // RATE LIMIT GLOBAL
 // Aplica a todas las rutas — protección general contra abuso
-
+// 100 requests por 15 minutos por IP
+// ============================================================
 export const globalRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutos
   max: 100,
-  standardHeaders: true,
+  standardHeaders: true, // incluye RateLimit-* headers en la respuesta
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    const forwarded = (req.headers["x-forwarded-for"] as string)
-      ?.split(",")[0]!!
-      .trim();
-    if (forwarded) return forwarded;
-    const ip = req.socket?.remoteAddress ?? "unknown";
-    return ip.startsWith("::ffff:") ? ip.substring(7) : ip;
-  },
+  keyGenerator: (req) => ipKeyGenerator(req.ip!),
   handler: (req, res, next, options) => {
     const retryAfter = Math.ceil(
       (options.windowMs - (Date.now() % options.windowMs)) / 1000,
@@ -36,14 +31,19 @@ export const globalRateLimit = rateLimit({
   },
 });
 
+// ============================================================
 // RATE LIMIT CREACIÓN DE SESIONES
-
+// Protege el endpoint más costoso — consume tokens de Gemini
+// 3 sesiones por hora por usuario autenticado
+// ============================================================
 export const createSessionRateLimit = rateLimit({
-  windowMs: 60 * 60 * 1000,
+  windowMs: 60 * 60 * 1000, // 1 hora
   max: 3,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req: any) => {
+    // Limitar por usuario autenticado, no por IP
+    // Así múltiples usuarios en la misma red no se afectan entre sí
     return `user_${req.user?.id || req.ip}`;
   },
   handler: (req, res, next, options) => {
@@ -60,9 +60,10 @@ export const createSessionRateLimit = rateLimit({
   },
 });
 
+// ============================================================
 // RATE LIMIT INTENTOS DE QUIZ
 // 10 intentos por hora por usuario
-
+// ============================================================
 export const submitAttemptRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
   max: 10,
@@ -83,22 +84,17 @@ export const submitAttemptRateLimit = rateLimit({
   },
 });
 
+// ============================================================
 // RATE LIMIT AUTH
+// Protege contra fuerza bruta en login
 // 10 intentos por 15 minutos por IP
-
+// ============================================================
 export const authRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutos
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    const forwarded = (req.headers["x-forwarded-for"] as string)
-      ?.split(",")[0]!!
-      .trim();
-    if (forwarded) return forwarded;
-    const ip = req.socket?.remoteAddress ?? "unknown";
-    return ip.startsWith("::ffff:") ? ip.substring(7) : ip;
-  },
+  keyGenerator: (req) => ipKeyGenerator(req.ip!),
   handler: (req, res, next, options) => {
     const retryAfter = Math.ceil(
       (options.windowMs - (Date.now() % options.windowMs)) / 1000,
