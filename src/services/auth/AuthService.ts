@@ -59,6 +59,7 @@ export class AuthService {
 
     if (!user) throw new Error("CREDENCIALES_INVALIDAS");
 
+    if (!user.password) throw new Error("CREDENCIALES_INVALIDAS");
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) throw new Error("CREDENCIALES_INVALIDAS");
 
