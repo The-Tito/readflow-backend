@@ -21,14 +21,12 @@ export class DocumentService {
 
   async checkHashExists(
     userId: number,
-    hash: string
+    hash: string,
   ): Promise<Document | null> {
-    return await prisma.document.findUnique({
+    return await prisma.document.findFirst({
       where: {
-        unique_user_document: {
-          userId,
-          documentHash: hash,
-        },
+        userId,
+        documentHash: hash,
       },
     });
   }
