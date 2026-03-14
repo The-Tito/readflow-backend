@@ -4,6 +4,10 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL =
   process.env.FROM_EMAIL || "Readflow <notificaciones@readflow.app>";
 
+// ============================================================
+// TIPOS
+// ============================================================
+
 interface T48ReminderData {
   username: string;
   email: string;
@@ -12,14 +16,19 @@ interface T48ReminderData {
   appUrl: string;
 }
 
+// ============================================================
+// EMAIL SERVICE
+// ============================================================
+
 export class EmailService {
+  // ── Recordatorio T48 ────────────────────────────────────────
   static async sendT48Reminder(data: T48ReminderData): Promise<void> {
-    const sessionUrl = `${data.appUrl}/session/${data.studySessionId}`;
+    const sessionUrl = `${data.appUrl}/login?redirect=/session/${data.studySessionId}/test`;
 
     const { error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: data.email,
-      subject: `Recordatorio de repaso — ${data.sessionTitle}`,
+      subject: `⏰ ¡Es hora de repasar! — ${data.sessionTitle}`,
       html: `
         <!DOCTYPE html>
         <html lang="es">
