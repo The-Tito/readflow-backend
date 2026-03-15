@@ -1,12 +1,8 @@
-import { Request, Response } from "express";
 import { AIService } from "./AI.service";
 import { DocumentService } from "./document.service";
 import { computeFileHash } from "../utils/hashFile";
 import fs from "fs";
 import { PrismaClient } from "@prisma/client";
-import { StudySession } from "../controllers/studySession.controller";
-import { title } from "process";
-import { error } from "console";
 
 const aiService = new AIService();
 const documentService = new DocumentService();
@@ -38,7 +34,7 @@ export class StudySessionService {
 
     // Chame aqui es donde sustituyes con la logica del hasheo
     // Hash SHA-256 del contenido binario del archivo
-    const documentHash = `${Date.now()}_${file.originalname}`;
+    const documentHash = computeFileHash(file.path);
 
     const newDocument = await documentService.createDocument({
       userId: userId,
