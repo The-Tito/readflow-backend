@@ -9,6 +9,7 @@ Reglas adicionales para el tipo "Completar":
 - Para evitar repeticiones, PREFIERE elegir 5 palabras distintas para los blanks de cada párrafo. Solo repite una palabra si es absolutamente necesario para el contexto.
 - Los sets T0 y T48 deben usar párrafos y palabras COMPLETAMENTE DISTINTOS entre sí.
 `;
+
 const MULTIPLE_CHOICE_RULES = `
 Reglas adicionales para el tipo "Opción Múltiple":
 - Cada pregunta debe tener EXACTAMENTE 4 opciones en el array "options".
@@ -44,25 +45,22 @@ const FILL_IN_THE_BLANK_QUESTION_EXAMPLE = `{
           }
         ]
       }`;
+// NOTA: el word_bank repite "estudio" 2 veces porque aparece en 2 blanks.
+// Cada entrada del word_bank corresponde 1 a 1 con cada blank en orden de aparición.
+// PREFERENCIA: elige párrafos donde las 5 palabras blanks sean distintas para evitar repeticiones.`
 
 const QUESTION_SCHEMAS: Record<number, string> = {
-  // Tipo 1: Opción Múltiple — genera dos sets distintos
   1: `
   "t0": ${MULTIPLE_CHOICE_QUESTION_EXAMPLE},
   "t48": ${MULTIPLE_CHOICE_QUESTION_EXAMPLE}
   `,
-
-  // Tipo 2: Completar — genera dos sets de párrafos distintos
   2: `
   "t0": ${FILL_IN_THE_BLANK_QUESTION_EXAMPLE},
   "t48": ${FILL_IN_THE_BLANK_QUESTION_EXAMPLE}
   `,
-
-  // Tipo 3: Redacción — solo criterios de evaluación
   3: `
   "evaluation_criteria": {
     "required_concepts": ["concepto_clave_1", "concepto_clave_2", "concepto_clave_3", "concepto_clave_4", "concepto_clave_5"],
-    "minimum_concepts_to_pass": 3,
     "key_relationships": [
       "Descripción de la relación entre concepto A y concepto B",
       "Descripción de la relación entre concepto C y concepto D"
@@ -83,6 +81,7 @@ const QUESTION_COUNT_RULE: Record<number, string> = {
   3: "Extrae exactamente 5 conceptos clave del documento para 'required_concepts'. Estos serán usados para evaluar la síntesis libre del usuario.",
 };
 
+// ── Configuración del resumen por nivel de dificultad ──────────────────────
 const SUMMARY_CONFIG: Record<
   string,
   { minWords: number; maxWords: number; instructions: string }
@@ -117,7 +116,7 @@ const SUMMARY_CONFIG: Record<
   },
 };
 
-// BUILDER PRINCIPAL
+// ── BUILDER PRINCIPAL ──────────────────────────────────────────────────────
 
 export class AIPromptBuilder {
   static buildStudyPrompt(
@@ -126,7 +125,6 @@ export class AIPromptBuilder {
   ): string {
     const questionSchema =
       QUESTION_SCHEMAS[evaluationTypeId] ?? QUESTION_SCHEMAS[1];
-
     const additionalRules = ADDITIONAL_RULES[evaluationTypeId] ?? "";
     const questionCountRule =
       QUESTION_COUNT_RULE[evaluationTypeId] ?? QUESTION_COUNT_RULE[1];
@@ -173,7 +171,7 @@ ${additionalRules}
     `.trim();
   }
 
-  // PROMPT PARA EVALUAR REDACCIÓN (segunda llamada a Gemini)
+  // ── PROMPT PARA EVALUAR REDACCIÓN ──────────────────────────────────────────
 
   static buildEssayEvaluationPrompt(
     userEssay: string,
@@ -212,7 +210,9 @@ Reglas estrictas:
   }
 }
 
-// SCORING DE REDACCIÓN
+// ── SCORING DE REDACCIÓN ───────────────────────────────────────────────────
+
+const ESSAY_PASSING_THRESHOLD = 0.6; // 60% de conceptos requeridos
 
 export interface EssayEvaluationResult {
   concepts_found: string[];
@@ -222,8 +222,8 @@ export interface EssayEvaluationResult {
 }
 
 export interface EssayScore {
-  score: number; // 0.0 - 10.0
-  maxPossibleScore: number; // Siempre 10.0
+  score: number;
+  maxPossibleScore: number;
   passed: boolean;
   aiFeedback: EssayEvaluationResult;
 }
@@ -231,14 +231,14 @@ export interface EssayScore {
 export function calculateEssayScore(
   aiResult: EssayEvaluationResult,
   requiredConcepts: string[],
-  minimumConceptsToPass: number,
 ): EssayScore {
   const totalConcepts = requiredConcepts.length;
   const foundCount = aiResult.concepts_found.length;
+  const minimumToPass = Math.ceil(totalConcepts * ESSAY_PASSING_THRESHOLD);
 
   const score = parseFloat(((foundCount / totalConcepts) * 100).toFixed(1));
   const passingScore = parseFloat(
-    ((minimumConceptsToPass / totalConcepts) * 100).toFixed(1),
+    ((minimumToPass / totalConcepts) * 100).toFixed(1),
   );
 
   return {

@@ -8,6 +8,7 @@ import {
   createSessionRateLimit,
   submitAttemptRateLimit,
 } from "../middlewares/rateLimit.middleware";
+import { uploadDocument } from "../middlewares/uploadMiddleware";
 
 const router = Router();
 
@@ -15,7 +16,7 @@ router.post(
   "/study-session",
   AuthMiddleware,
   createSessionRateLimit,
-  upload.single("document"),
+  uploadDocument,
   StudySession.createStudySession,
 );
 
