@@ -67,10 +67,6 @@ export class AIService {
     const aiResult: EssayEvaluationResult = JSON.parse(responseText);
 
     // El score lo calcula el backend con fórmula fija
-    return calculateEssayScore(
-      aiResult,
-      requiredConcepts,
-      minimumConceptsToPass,
-    );
+    return calculateEssayScore(aiResult, requiredConcepts);
   }
 }
