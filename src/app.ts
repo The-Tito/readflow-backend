@@ -5,6 +5,7 @@ import studySessionRoutes from "./routes/studySession.routes";
 import catalogRoutes from "./routes/catalogs.routes";
 import statsRoutes from "./routes/stats.routes";
 import userRoutes from "./routes/user.routes";
+import adminRoutes from "./routes/admin.routes";
 import cookieParser from "cookie-parser";
 import { globalRateLimit } from "./middlewares/rateLimit.middleware";
 if (process.env.NODE_ENV !== "production") {
@@ -29,6 +30,7 @@ app.use("/api/v1", studySessionRoutes);
 app.use("/api/v1", catalogRoutes);
 app.use("/api/v1", statsRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1", adminRoutes);
 
 app.use((err: any, req: any, res: any, next: any) => {
   res.status(err.status || 500).json({
