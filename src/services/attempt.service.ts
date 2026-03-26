@@ -282,6 +282,43 @@ export class AttemptService {
       );
     }
 
+    // ACTUALIZAR RACHA
+    const currentStreakData = await prisma.userStreak.findUnique({ where: { userId } });
+    if (currentStreakData) {
+      // Usamos Date.UTC para evitar problemas con el horario de verano (DST)
+      const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+
+      const lastActivity = currentStreakData.lastActivityDate
+        ? Date.UTC(
+          currentStreakData.lastActivityDate.getFullYear(),
+          currentStreakData.lastActivityDate.getMonth(),
+          currentStreakData.lastActivityDate.getDate()
+        )
+        : null;
+
+      const ONE_DAY = 24 * 60 * 60 * 1000;
+      let { currentStreak, bestStreak } = currentStreakData;
+
+      if (!lastActivity || today - lastActivity > ONE_DAY) {
+        currentStreak = 1;
+      } else if (today - lastActivity === ONE_DAY) {
+        currentStreak += 1;
+      }
+
+      if (currentStreak > bestStreak) {
+        bestStreak = currentStreak;
+      }
+
+      await prisma.userStreak.update({
+        where: { userId },
+        data: {
+          lastActivityDate: now,
+          currentStreak,
+          bestStreak,
+        }
+      });
+    }
+
     // Devolver resultado al frontend
     return {
       attempt: {
