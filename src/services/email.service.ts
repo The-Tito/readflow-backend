@@ -28,7 +28,8 @@ export class EmailService {
     const { error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: data.email,
-      subject: `⏰ ¡Es hora de repasar! — ${data.sessionTitle}`,
+      subject: `Es hora de repasar — ${data.sessionTitle}`,
+      text: `Hola ${data.username},\n\nHan pasado 48 horas desde tu última evaluación de "${data.sessionTitle}".\n\nInicia tu repaso: ${sessionUrl}\n\n---\nReadflow - Si no deseas recibir recordatorios, entra a tu perfil y desactívalos.`,
       html: `
         <!DOCTYPE html>
         <html lang="es">
@@ -117,6 +118,10 @@ export class EmailService {
         </body>
         </html>
       `,
+      headers: {
+        "List-Unsubscribe": `<${data.appUrl}/settings/notifications>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
     });
 
     if (error) {
