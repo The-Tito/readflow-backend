@@ -64,4 +64,64 @@ export class AdminController {
         .json({ message: "Error interno del servidor.", error: error.message });
     }
   }
+
+  static async getCicloEspaciado(req: Request, res: Response) {
+    try {
+      const data = await AdminService.getCicloEspaciado();
+      res.status(200).json(data);
+    } catch (error: any) {
+      console.error("Error en getCicloEspaciado:", error);
+      res
+        .status(500)
+        .json({ message: "Error interno del servidor.", error: error.message });
+    }
+  }
+
+  static async getRankingIri(req: Request, res: Response) {
+    try {
+      const data = await AdminService.getRankingIri();
+      res.status(200).json(data);
+    } catch (error: any) {
+      console.error("Error en getRankingIri:", error);
+      res
+        .status(500)
+        .json({ message: "Error interno del servidor.", error: error.message });
+    }
+  }
+
+  static async getRetencionPorTipoEvaluacion(req: Request, res: Response) {
+    try {
+      const data = await AdminService.getRetencionPorTipoEvaluacion();
+      res.status(200).json(data);
+    } catch (error: any) {
+      console.error("Error en getRetencionPorTipoEvaluacion:", error);
+      res
+        .status(500)
+        .json({ message: "Error interno del servidor.", error: error.message });
+    }
+  }
+
+  static async getRachaActiva(req: Request, res: Response) {
+    try {
+      const data = await AdminService.getRachaActiva();
+      res.status(200).json(data);
+    } catch (error: any) {
+      console.error("Error en getRachaActiva:", error);
+      res
+        .status(500)
+        .json({ message: "Error interno del servidor.", error: error.message });
+    }
+  }
+
+  static async getEvolucionIriSemanal(req: Request, res: Response) {
+    try {
+      const data = await AdminService.getEvolucionIriSemanal();
+      res.status(200).json(data);
+    } catch (error: any) {
+      console.error("Error en getEvolucionIriSemanal:", error);
+      res
+        .status(500)
+        .json({ message: "Error interno del servidor.", error: error.message });
+    }
+  }
 }
