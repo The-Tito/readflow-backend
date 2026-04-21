@@ -2,6 +2,12 @@ import { PrismaClient, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+function serializeRow(row: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(row).map(([k, v]) => [k, typeof v === "bigint" ? Number(v) : v]),
+  );
+}
+
 export class AdminService {
   // Perfil completo de un usuario buscado por correo
   static async getUserByEmail(email: string) {
@@ -382,7 +388,7 @@ export class AdminService {
       LEFT JOIN usuarios_con_t48 ut48 ON ucs.user_id = ut48.user_id
       ORDER BY avg_iri DESC
     `);
-    return { data: rows };
+    return { data: (rows as Record<string, unknown>[]).map(serializeRow) };
   }
 
   static async getRankingIri() {
@@ -419,7 +425,7 @@ export class AdminService {
       HAVING COUNT(DISTINCT a_t48.id) >= 1
       ORDER BY avg_iri DESC NULLS LAST
     `);
-    return { data: rows };
+    return { data: (rows as Record<string, unknown>[]).map(serializeRow) };
   }
 
   static async getRetencionPorTipoEvaluacion() {
@@ -452,7 +458,7 @@ export class AdminService {
       HAVING COUNT(DISTINCT ss.id) >= 1
       ORDER BY avg_iri DESC NULLS LAST
     `);
-    return { data: rows };
+    return { data: (rows as Record<string, unknown>[]).map(serializeRow) };
   }
 
   static async getRachaActiva() {
@@ -544,7 +550,7 @@ export class AdminService {
       FROM sesiones_por_semana
       ORDER BY semana ASC
     `);
-    return { data: rows };
+    return { data: (rows as Record<string, unknown>[]).map(serializeRow) };
   }
 
   // Lista todos los usuarios con métricas resumidas
