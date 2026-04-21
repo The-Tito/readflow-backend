@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -340,6 +340,211 @@ export class AdminService {
     });
 
     return { weeks: weeksWithAccumulated };
+  }
+
+  static async getCicloEspaciado() {
+    const rows = await prisma.$queryRaw(Prisma.sql`
+      WITH usuarios_con_sesiones AS (
+        SELECT
+          u.id          AS user_id,
+          u.username,
+          u.created_at  AS registered_at,
+          COUNT(DISTINCT ss.id) AS total_sessions
+        FROM users u
+        JOIN study_sessions ss ON u.id = ss.user_id
+        GROUP BY u.id, u.username, u.created_at
+      ),
+      usuarios_con_t48 AS (
+        SELECT DISTINCT a.user_id
+        FROM attempts a
+        WHERE a.timing_tag = 'T48'
+          AND a.completed_at IS NOT NULL
+      )
+      SELECT
+        ucs.user_id,
+        ucs.username,
+        ucs.total_sessions,
+        ucs.registered_at,
+        CASE
+          WHEN ut48.user_id IS NOT NULL THEN 'Completó ciclo'
+          ELSE 'Solo T0'
+        END AS ciclo_status,
+        COALESCE(
+          ROUND((
+            SELECT AVG(a.iri_value)
+            FROM attempts a
+            WHERE a.user_id = ucs.user_id
+              AND a.iri_value IS NOT NULL
+          )::numeric, 1),
+          0
+        ) AS avg_iri
+      FROM usuarios_con_sesiones ucs
+      LEFT JOIN usuarios_con_t48 ut48 ON ucs.user_id = ut48.user_id
+      ORDER BY avg_iri DESC
+    `);
+    return { data: rows };
+  }
+
+  static async getRankingIri() {
+    const rows = await prisma.$queryRaw(Prisma.sql`
+      SELECT
+        u.id                                          AS user_id,
+        u.username,
+        COUNT(DISTINCT ss.id)                         AS total_sessions,
+        COUNT(DISTINCT a_t48.id)                      AS sesiones_completadas,
+        ROUND(AVG(a_t48.iri_value)::numeric, 1)       AS avg_iri,
+        ROUND(MAX(a_t48.iri_value)::numeric, 1)       AS best_iri,
+        ROUND(MIN(a_t48.iri_value)::numeric, 1)       AS worst_iri,
+        (
+          SELECT dl.display_name
+          FROM study_sessions ss2
+          JOIN difficulty_levels dl ON ss2.difficulty_level_id = dl.id
+          WHERE ss2.user_id = u.id
+          GROUP BY dl.display_name
+          ORDER BY COUNT(*) DESC
+          LIMIT 1
+        ) AS nivel_mas_usado,
+        CASE
+          WHEN ROUND(AVG(a_t48.iri_value)::numeric, 1) >= 80 THEN 'Alto rendimiento'
+          WHEN ROUND(AVG(a_t48.iri_value)::numeric, 1) >= 60 THEN 'Rendimiento medio'
+          WHEN ROUND(AVG(a_t48.iri_value)::numeric, 1) >= 40 THEN 'Necesita mejorar'
+          ELSE 'Bajo rendimiento'
+        END AS clasificacion
+      FROM users u
+      JOIN study_sessions ss       ON u.id = ss.user_id
+      JOIN attempts a_t48          ON ss.id = a_t48.study_session_id
+        AND a_t48.timing_tag = 'T48'
+        AND a_t48.completed_at IS NOT NULL
+      GROUP BY u.id, u.username
+      HAVING COUNT(DISTINCT a_t48.id) >= 1
+      ORDER BY avg_iri DESC NULLS LAST
+    `);
+    return { data: rows };
+  }
+
+  static async getRetencionPorTipoEvaluacion() {
+    const rows = await prisma.$queryRaw(Prisma.sql`
+      SELECT
+        et.display_name                                     AS tipo_evaluacion,
+        COUNT(DISTINCT ss.id)                               AS total_sesiones,
+        (
+          SELECT COUNT(DISTINCT ss2.id)
+          FROM study_sessions ss2
+          JOIN attempts a2 ON ss2.id = a2.study_session_id
+          WHERE ss2.evaluation_type_id = et.id
+            AND a2.timing_tag = 'T0'
+            AND a2.completed_at IS NOT NULL
+        ) AS sesiones_con_t0,
+        COUNT(DISTINCT a_t48.study_session_id)              AS sesiones_con_t48,
+        ROUND(AVG(a_t48.iri_value)::numeric, 1)             AS avg_iri,
+        ROUND(
+          (COUNT(DISTINCT a_t48.study_session_id)::numeric /
+           NULLIF(COUNT(DISTINCT ss.id), 0)) * 100, 1
+        )                                                   AS tasa_completacion_pct,
+        ROUND(AVG(a_t48.score - a_t0.score)::numeric, 1)   AS mejora_promedio
+      FROM evaluation_types et
+      JOIN study_sessions ss      ON et.id = ss.evaluation_type_id
+      LEFT JOIN attempts a_t0     ON ss.id = a_t0.study_session_id
+        AND a_t0.timing_tag = 'T0' AND a_t0.completed_at IS NOT NULL
+      LEFT JOIN attempts a_t48    ON ss.id = a_t48.study_session_id
+        AND a_t48.timing_tag = 'T48' AND a_t48.completed_at IS NOT NULL
+      GROUP BY et.id, et.display_name
+      HAVING COUNT(DISTINCT ss.id) >= 1
+      ORDER BY avg_iri DESC NULLS LAST
+    `);
+    return { data: rows };
+  }
+
+  static async getRachaActiva() {
+    const rows = await prisma.$queryRaw(Prisma.sql`
+      WITH usuarios_activos AS (
+        SELECT
+          us.user_id,
+          us.current_streak,
+          us.best_streak,
+          us.average_iri,
+          us.best_iri,
+          us.total_sessions,
+          us.total_t48_completed,
+          us.last_activity_date
+        FROM user_streaks us
+        WHERE us.last_activity_date >= NOW() - INTERVAL '7 days'
+          OR us.current_streak > 0
+      )
+      SELECT
+        u.username,
+        ua.current_streak,
+        ua.best_streak,
+        ua.total_sessions,
+        ua.total_t48_completed,
+        COALESCE(ua.average_iri, 0)                       AS avg_iri,
+        COALESCE(ua.best_iri, 0)                          AS best_iri,
+        ROUND(
+          (ua.total_t48_completed::numeric /
+           NULLIF(ua.total_sessions, 0)) * 100, 1
+        )                                                  AS tasa_completacion_pct,
+        CASE
+          WHEN ua.current_streak = ua.best_streak AND ua.best_streak > 0
+            THEN 'En racha máxima'
+          WHEN ua.current_streak > 0
+            THEN 'Racha activa'
+          ELSE 'Sin racha'
+        END AS estado_racha
+      FROM usuarios_activos ua
+      JOIN users u ON ua.user_id = u.id
+      WHERE ua.user_id IN (
+        SELECT DISTINCT a.user_id
+        FROM attempts a
+        WHERE a.timing_tag = 'T48'
+          AND a.completed_at IS NOT NULL
+      )
+      ORDER BY ua.current_streak DESC, ua.average_iri DESC
+    `);
+    return { data: rows };
+  }
+
+  static async getEvolucionIriSemanal() {
+    const rows = await prisma.$queryRaw(Prisma.sql`
+      WITH sesiones_por_semana AS (
+        SELECT
+          DATE_TRUNC('week', a_t48.completed_at)          AS semana,
+          COUNT(DISTINCT a_t48.id)                        AS sesiones_completadas,
+          COUNT(DISTINCT a_t48.user_id)                   AS usuarios_activos,
+          ROUND(AVG(a_t48.iri_value)::numeric, 1)         AS avg_iri_semana,
+          ROUND(AVG(a_t48.score)::numeric, 1)             AS avg_score_t48,
+          ROUND(AVG(a_t0.score)::numeric, 1)              AS avg_score_t0,
+          ROUND(AVG(a_t48.score - a_t0.score)::numeric,1) AS avg_mejora
+        FROM attempts a_t48
+        JOIN attempts a_t0
+          ON a_t48.study_session_id = a_t0.study_session_id
+          AND a_t0.timing_tag = 'T0'
+          AND a_t0.completed_at IS NOT NULL
+        WHERE a_t48.timing_tag = 'T48'
+          AND a_t48.completed_at IS NOT NULL
+          AND a_t48.iri_value IS NOT NULL
+        GROUP BY DATE_TRUNC('week', a_t48.completed_at)
+      )
+      SELECT
+        TO_CHAR(semana, 'YYYY-MM-DD')                     AS semana_inicio,
+        sesiones_completadas,
+        usuarios_activos,
+        avg_iri_semana,
+        avg_score_t0,
+        avg_score_t48,
+        avg_mejora,
+        ROUND(AVG(avg_iri_semana) OVER (
+          ORDER BY semana
+          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        )::numeric, 1)                                    AS iri_acumulado,
+        CASE
+          WHEN avg_iri_semana >= 70 THEN 'Hipótesis validada'
+          WHEN avg_iri_semana >= 50 THEN 'Hipótesis parcial'
+          ELSE 'Hipótesis no validada'
+        END AS estado_hipotesis
+      FROM sesiones_por_semana
+      ORDER BY semana ASC
+    `);
+    return { data: rows };
   }
 
   // Lista todos los usuarios con métricas resumidas
